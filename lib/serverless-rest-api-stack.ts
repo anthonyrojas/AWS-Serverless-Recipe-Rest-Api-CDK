@@ -1,25 +1,36 @@
 import * as cdk from 'aws-cdk-lib';
 import {
   RestApi,
-  //LambdaRestApi,
   LambdaIntegration,
   Period,
   ApiKey,
-  ApiKeySourceType
+  ApiKeySourceType,
+  CognitoUserPoolsAuthorizer,
+  AuthorizationType
 } from 'aws-cdk-lib/aws-apigateway';
 import {
   Table,
   AttributeType
 } from 'aws-cdk-lib/aws-dynamodb'
-import { 
-  // FunctionUrlAuthType,
-  // FunctionUrl,
+import {
   Runtime
 } from 'aws-cdk-lib/aws-lambda';
 import {
   NodejsFunction
 } from 'aws-cdk-lib/aws-lambda-nodejs';
-import { Construct } from 'constructs';
+import { 
+  Construct 
+} from 'constructs';
+import {
+  Bucket
+} from 'aws-cdk-lib/aws-s3';
+import {
+  UserPool,
+  UserPoolClient,
+  AccountRecovery,
+  UserPoolClientIdentityProvider,
+  UserPoolEmail,
+} from 'aws-cdk-lib/aws-cognito'
 import * as path from 'path'
 
 export class ServerlessRestApiStack extends cdk.Stack {
@@ -29,18 +40,7 @@ export class ServerlessRestApiStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    const recipesTable = new Table(this, 'RecipesTable', {
-      tableName: 'recipes',
-      partitionKey: {
-        name: 'id',
-        type: AttributeType.STRING
-      }
-      // sortKey: {
-      //   name: 'name',
-      //   type: AttributeType.STRING
-      // }
-    });
-
+    const {recipesTable} = this.addDynamoDbTables();
     //define lambda resources
     const createRecipeLambda: NodejsFunction = this.addCreateRecipeLambda(recipesTable);
     const getRecipeLambda: NodejsFunction = this.addGetRecipeLambda(recipesTable);
@@ -48,15 +48,14 @@ export class ServerlessRestApiStack extends cdk.Stack {
     const deleteRecipeLambda: NodejsFunction = this.addDeleteRecipeLambda(recipesTable);
     //grant dynamo permissions to lambda functions
     recipesTable.grantReadData(getRecipeLambda);
+
     recipesTable.grantWriteData(createRecipeLambda);
-    recipesTable.grantWriteData(deleteRecipeLambda);
+    
+    recipesTable.grantReadWriteData(deleteRecipeLambda);
+    
     recipesTable.grantReadWriteData(updateRecipeLambda);
-    // const createRecipeLambdaFnUrl: FunctionUrl = createRecipeLambda.addFunctionUrl({
-    //   authType: FunctionUrlAuthType.NONE
-    // });
-    // const getRecipeLambdaFnUrl: FunctionUrl = getRecipeLambda.addFunctionUrl({
-    //   authType: FunctionUrlAuthType.NONE
-    // });
+
+    const {userPool} = this.addCognitoResources();
 
     const api = new RestApi(this, this.API_NAME, {
       description: 'Sample REST API created by CDK template for simple recipe API',
@@ -78,6 +77,14 @@ export class ServerlessRestApiStack extends cdk.Stack {
         ]
       },
       apiKeySourceType: ApiKeySourceType.HEADER
+    });
+
+    const authorizer = new CognitoUserPoolsAuthorizer(this, 'RestApiCognitoAuthorizer', {
+      cognitoUserPools: [userPool]
+      // {
+      //   userPoolClient: userPoolClient,
+      //   identitySource: ['$request.header.Authorization']
+      // }
     });
 
     const apiKey = new ApiKey(this, 'RecipeApiDevApiKey', {
@@ -113,10 +120,16 @@ export class ServerlessRestApiStack extends cdk.Stack {
     
     const recipeResource = api.root.addResource('recipe');
     const recipeIdResource = recipeResource.addResource("{id}");
+    const instructionsResource = recipeIdResource.addResource("instructions");
+    //const ingredientsResource = recipeIdResource.addResource("ingredients");
+    const instructionResource = recipeIdResource.addResource("instruction");
+    const ingredientResource = recipeIdResource.addResource("ingredient")
     
     recipeResource
     .addMethod('POST', new LambdaIntegration(createRecipeLambda), {
-      apiKeyRequired: true
+      apiKeyRequired: true,
+      authorizer: authorizer,
+      authorizationType: AuthorizationType.COGNITO
     });
     
     recipeIdResource
@@ -132,7 +145,9 @@ export class ServerlessRestApiStack extends cdk.Stack {
       requestParameters: {
         "method.request.path.id": true
       },
-      apiKeyRequired: true
+      apiKeyRequired: true,
+      authorizer: authorizer,
+      authorizationType: AuthorizationType.COGNITO
     });
 
     recipeIdResource
@@ -140,14 +155,107 @@ export class ServerlessRestApiStack extends cdk.Stack {
       requestParameters: {
         "method.request.path.id": true
       },
-      apiKeyRequired: true
+      apiKeyRequired: true,
+      authorizer: authorizer,
+      authorizationType: AuthorizationType.COGNITO
     })
   }
-
+  addCognitoResources() {
+    const userPool = new UserPool(this, 'RecipeApiUserPool', {
+      userPoolName: 'recipe-api-user-pool',
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      selfSignUpEnabled: true,
+      signInAliases: {email: true},
+      autoVerify: {email: true},
+      passwordPolicy: {
+        minLength: 6
+      },
+      standardAttributes: {
+        givenName: {
+          mutable: true,
+          required: true
+        },
+        familyName: {
+          required: true,
+          mutable: true
+        },
+        preferredUsername: {
+          mutable: true,
+          required: true
+        },
+        profilePicture: {
+          mutable: true,
+          required: false
+        },
+        birthdate: {
+          mutable: true,
+          required: true
+        }
+      },
+      email: UserPoolEmail.withCognito(),
+      accountRecovery: AccountRecovery.EMAIL_ONLY
+    });
+    const userPoolDomain = userPool.addDomain('RecipeApiUserPoolDomain', {
+      cognitoDomain: {
+        domainPrefix: 'serverlessrecipeapiauth'
+      }
+    });
+    const userPoolClient: UserPoolClient = userPool.addClient('RecipeApiUserPoolClient', {
+      userPoolClientName: 'RecipeApiUserPoolClient',
+      authFlows: {
+        adminUserPassword: true,
+        userPassword: true,
+        custom: true,
+        userSrp: true,
+      },
+      supportedIdentityProviders: [
+        UserPoolClientIdentityProvider.COGNITO
+      ],
+      oAuth: {
+        flows: {
+          implicitCodeGrant: true,
+          authorizationCodeGrant: false,
+          clientCredentials: false
+        }
+      },
+    });
+    return {
+      userPool,
+      userPoolClient,
+      userPoolDomain
+    }
+  }
+  addDynamoDbTables() {
+    const recipesTable = new Table(this, 'RecipesTable', {
+      //tableName: 'Recipes',
+      partitionKey: {
+        name: "recipeId",
+        type: AttributeType.STRING
+      },
+      sortKey: {
+        name: "itemId", //will contain userId and unique id of ingredient and instructions
+        type: AttributeType.STRING
+      }
+    });
+    recipesTable.addGlobalSecondaryIndex({
+      indexName: "UserIndex",
+      partitionKey: {
+        name: "itemId", //contains userId
+        type: AttributeType.STRING
+      },
+      sortKey: {
+        name: "recipeId",
+        type: AttributeType.STRING
+      }
+    })
+    return {
+      recipesTable
+    }
+  }
   addGetRecipeLambda(recipesTable: Table): NodejsFunction {
     const getRecipeLambda = new NodejsFunction(this, 'get-recipe', {
       environment: {
-        TABLE_NAME: recipesTable.tableName
+        RECIPES_TABLE_NAME: recipesTable.tableName
       },
       memorySize: 256,
       timeout: cdk.Duration.seconds(15),
@@ -161,8 +269,7 @@ export class ServerlessRestApiStack extends cdk.Stack {
   addCreateRecipeLambda(recipesTable: Table): NodejsFunction {
     const createRecipeLambda = new NodejsFunction(this, 'create-recipe', {
       environment: {
-        TABLE_NAME: recipesTable.tableName,
-        TABLE_ARN: recipesTable.tableArn
+        RECIPES_TABLE_NAME: recipesTable.tableName
       },
       memorySize: 128,
       timeout: cdk.Duration.seconds(15),
@@ -176,7 +283,7 @@ export class ServerlessRestApiStack extends cdk.Stack {
   addDeleteRecipeLambda(recipesTable: Table): NodejsFunction {
     return new NodejsFunction(this, 'delete-recipe', {
       environment: {
-        TABLE_NAME: recipesTable.tableName
+        RECIPES_TABLE_NAME: recipesTable.tableName
       },
       memorySize: 128,
       timeout: cdk.Duration.seconds(15),
@@ -189,7 +296,7 @@ export class ServerlessRestApiStack extends cdk.Stack {
   addUpdateRecipeLambda(recipesTable: Table): NodejsFunction {
     return new NodejsFunction(this, 'update-recipe', {
       environment: {
-        TABLE_NAME: recipesTable.tableName
+        RECIPES_TABLE_NAME: recipesTable.tableName
       },
       memorySize: 128,
       timeout: cdk.Duration.seconds(15),
@@ -197,6 +304,12 @@ export class ServerlessRestApiStack extends cdk.Stack {
       runtime: Runtime.NODEJS_16_X,
       handler: 'handler',
       entry: path.join(__dirname, '/../src/update-recipe/index.ts')
+    })
+  }
+  addRecipePictureBucket() {
+    return new Bucket(this, 'RecipePicturesBucket', {
+      bucketName: "recipeapiimages",
+      publicReadAccess: true
     })
   }
 }

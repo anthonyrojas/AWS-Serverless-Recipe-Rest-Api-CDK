@@ -9,12 +9,7 @@ import {
 import {
     marshall
 } from '@aws-sdk/util-dynamodb';
-
-interface RecipeRequestBody {
-    name: string;
-    steps: Array<string>;
-    ingredients: Array<string>;
-}
+import { IRecipe } from "../models/recipe.model";
 
 export async function handler(event: APIGatewayEvent, context: Context) {
     let httpStatus = 200;
@@ -23,7 +18,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
             httpStatus = 405;
             throw new Error(`${event.httpMethod} HTTP method is not supported in ${context.functionName}`);
         }
-        const recipeTableName = process.env.TABLE_NAME;
+        const recipeTableName = process.env.RECIPES_TABLE_NAME;
         const ddbClient = new DynamoDBClient({
             region: 'us-west-2'
         });
@@ -36,17 +31,20 @@ export async function handler(event: APIGatewayEvent, context: Context) {
             throw new Error('Missing fields to update.');
         }
         const id: string = event.pathParameters["id"];
-        const requestBody: RecipeRequestBody = JSON.parse(event.body);
+        const requestBody: IRecipe = JSON.parse(event.body);
         const putItemCmd = new PutItemCommand({
             TableName: recipeTableName,
             Item: marshall({
-                id: id,
-                ...requestBody
+                ...requestBody,
+                id: id
             }),
-            ConditionExpression: "id = :id",
+            ConditionExpression: "recipeId = :id and etityType = :entityType",
             ExpressionAttributeValues: {
                 ":id": {
                     S: id
+                },
+                ":entityType": {
+                    S: "RECIPE"
                 }
             }
         });

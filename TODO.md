@@ -2,18 +2,18 @@
 
 The following is a list of improvements that are pending implementation. 
 
-- [ ] Add S3 bucket for recipe pictures
-- [ ] Add AWS Cognito for user authentication
-- [ ] Separate ingredients into separate table
-- [ ] Separate steps into separate table
-- [ ] Add model classes for DynamoDB items
-    - [ ] Recipe
-    - [ ] Ingredients
-    - [ ] Steps
-    - [ ] Ratings
-- [ ] Add `prepTime` to recipes table model
-- [ ] Add `cookTime` to recipes table model
+- [X] Add S3 bucket for recipe pictures
+- [X] Add AWS Cognito for user authentication
+- [X] Add model classes for DynamoDB items
+    - [X] Recipe
+    - [X] Ingredients
+    - [X] Steps
+- [X] Add `prepTime` to recipes table model
+- [X] Add `cookTime` to recipes table model
+- [X] Implement single table design while separating by entity type
+- [ ] Add Ratings functionality to the API for users
 - [ ] Flesh out README
+- [ ] Add a pipeline for code changes
 - [ ] (Optional) Separate stacks by business domain
     - [ ] LambdaStack
     - [ ] ApiGateway Stack

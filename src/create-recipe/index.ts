@@ -4,53 +4,98 @@ import {
 } from 'aws-lambda';
 import {
     DynamoDBClient,
-    PutItemCommand
+    //PutItemCommand,
+    BatchWriteItemCommand,
+    //PutRequest,
+    BatchWriteItemCommandInput
 } from '@aws-sdk/client-dynamodb';
-import {
-    v4 as uuid
-} from 'uuid';
 import {
     marshall
 } from '@aws-sdk/util-dynamodb'
-
-interface RecipeRequestBody {
-    name: string;
-    steps: Array<string>;
-    ingredients: Array<string>;
-}
+import {Recipe, IRecipe} from "../models/recipe.model";
 
 export async function handler (event: APIGatewayEvent, context: Context) {
+    let statusCode = 200;
     try{
+        //const userId = event.requestContext.authorizer;
+        console.log(JSON.stringify(event.requestContext));
         if(event.httpMethod !== 'POST') {
             throw new Error(`${event.httpMethod} HTTP method is not supported in ${context.functionName}`)
         }
-        const recipeTableName = process.env.TABLE_NAME;
+        if (event.requestContext.authorizer === undefined || event.requestContext.authorizer === null) {
+            statusCode = 403;
+            throw new Error(`Missing authentication token. Failed to create recipe`);
+        }
+        const userId = event.requestContext.authorizer.claims["cognito:username"]
+        const recipeTableName = process.env.RECIPES_TABLE_NAME!;
         const ddbClient = new DynamoDBClient({
             region: 'us-west-2'
         });
         if(event.body === null) {
             throw new Error("Missing request body.")
         }
-        const requestBody: RecipeRequestBody = JSON.parse(event.body);
-        const recipeId = uuid();
-        const createRecipeCmd = new PutItemCommand({
-            TableName: recipeTableName,
-            Item: marshall({
-                id: recipeId,
-                ...requestBody
-            })
+        const requestBody: IRecipe = JSON.parse(event.body);
+        const {name, description, cookTime, prepTime, ingredients, instructions} = requestBody;
+        const recipe: Recipe = new Recipe(userId, name, description, cookTime, prepTime);
+        recipe.attachIIngredients(ingredients!);
+        recipe.attachIInstructions(instructions!);
+
+        const putIngredients = recipe.ingredients.map(ingredient => {
+            return {
+                PutRequest: {
+                    Item: marshall(ingredient.toPutRequestItem())
+                }
+            }
         });
-        await ddbClient.send(createRecipeCmd);
+        const putInstructions = recipe.instructions.map(instruction => {
+            return {
+                PutRequest: {
+                    Item: marshall(instruction.toPutRequestItem())
+                }
+            }
+        });
+        const batchWriteCmdInput: BatchWriteItemCommandInput = {
+            RequestItems: {
+                [recipeTableName]: [
+                    {
+                        PutRequest: {
+                            Item: marshall(recipe.toPutRequestItem())
+                        }
+                    },
+                    ...putIngredients,
+                    ...putInstructions
+                ],
+            }
+        };
+        const batchWriteCmd = new BatchWriteItemCommand(batchWriteCmdInput)
+        await ddbClient.send(batchWriteCmd);
         return {
-            statusCode: 201,
+            statusCode: 200,
             body: JSON.stringify({
-                id: recipeId,
-                name: requestBody.name
+                recipe: recipe
             })
         }
+        // const createRecipeCmd = new PutItemCommand({
+        //     TableName: recipeTableName,
+        //     Item: marshall({
+        //         id: recipeId,
+        //         ...requestBody
+        //     })
+        // });
+        
+        // await ddbClient.send(createRecipeCmd);
+        // return {
+        //     statusCode: 201,
+        //     body: JSON.stringify({
+        //         id: recipeId,
+        //         name: requestBody.name
+        //     })
+        // }
     }catch(e: any){
+        console.log(e.message);
+        console.log(e);
         return {
-            statusCode: 400,
+            statusCode: statusCode < 400 ? 400 : statusCode,
             body: JSON.stringify({
                 error: e.message
             })

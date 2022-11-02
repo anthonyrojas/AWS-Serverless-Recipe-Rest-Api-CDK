@@ -4,8 +4,14 @@ import {
 } from 'aws-lambda';
 import {
     DynamoDBClient,
-    DeleteItemCommand
+    DeleteItemCommand,
+    QueryCommand,
+    BatchWriteItemCommand,
+    BatchWriteItemCommandInput
 } from '@aws-sdk/client-dynamodb';
+import {
+    marshall
+} from '@aws-sdk/util-dynamodb'
 
 export async function handler(event: APIGatewayEvent, context: Context) {
     let httpStatus = 200;
@@ -14,7 +20,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
             httpStatus = 405;
             throw new Error(`${event.httpMethod} HTTP method is not supported in ${context.functionName}`);
         }
-        const recipeTableName = process.env.TABLE_NAME;
+        const recipeTableName: string = process.env.RECIPES_TABLE_NAME!;
         const ddbClient = new DynamoDBClient({
             region: 'us-west-2'
         });
@@ -27,15 +33,43 @@ export async function handler(event: APIGatewayEvent, context: Context) {
             httpStatus = 404;
             throw new Error("Failed to specify a recipe id. Unable to delete any recipe.");
         }
-        const deleteItemCmd = new DeleteItemCommand({
+        //query recipe and related items
+        const queryItemCmd = new QueryCommand({
             TableName: recipeTableName,
-            Key: {
-                id: {
+            ExpressionAttributeValues: {
+                ":id": {
                     S: id
                 }
-            }
+            },
+            KeyConditionExpression: "recipeId = :id"
         });
-        await ddbClient.send(deleteItemCmd);
+        const recipeItems = await ddbClient.send(queryItemCmd);
+        const deleteItems = recipeItems.Items!.map(item => {
+            return {
+                DeleteRequest: {
+                    Key: {
+                        recipeId: item.recipeId,
+                        itemId: item.itemId
+                    }
+                }
+            }
+        })
+        const batchWriteCmdInput: BatchWriteItemCommandInput = {
+            RequestItems: {
+                [recipeTableName]: deleteItems
+            }
+        }
+        const batchDeleteCmd = new BatchWriteItemCommand(batchWriteCmdInput);
+        await ddbClient.send(batchDeleteCmd);
+        // const deleteItemCmd = new DeleteItemCommand({
+        //     TableName: recipeTableName,
+        //     Key: {
+        //         recipeId: {
+        //             S: id
+        //         }
+        //     }
+        // });
+        // await ddbClient.send(deleteItemCmd);
         return {
             statusCode: httpStatus, 
             body: JSON.stringify({
