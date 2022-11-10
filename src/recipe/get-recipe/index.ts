@@ -12,12 +12,13 @@ import {
 import {
     unmarshall
 } from '@aws-sdk/util-dynamodb';
-import {IRecipe} from "../models/recipe.model";
-import {IIngredient} from "../models/ingredient.model";
-import {IInstruction} from "../models/instruction.model";
+import {IRecipe} from "../../models/recipe.model";
+import {IIngredient} from "../../models/ingredient.model";
+import {IInstruction} from "../../models/instruction.model";
 
 function unmarshallQueryCmdOutput(outputItems: QueryCommandOutput) {
     if (outputItems.Count === undefined || outputItems.Count === 0 || outputItems.Items === undefined) return [];
+    console.log("There are not recipes present in the response from DynamoDB")
     return outputItems.Items.map(item => unmarshall(item));
 }
 
@@ -54,9 +55,9 @@ export async function handler (event: APIGatewayEvent, context: Context) {
         const ddbClient = new DynamoDBClient({
             region: 'us-west-2'
         });
-        if(event.pathParameters !== null && event.pathParameters["id"] !== undefined && event.pathParameters["id"] !== null) {
+        if(event.pathParameters !== null && event.pathParameters["recipeId"] !== undefined && event.pathParameters["recipeId"] !== null) {
             //get one recipe by recipeId
-            const id: string = event.pathParameters["id"];
+            const id: string = event.pathParameters["recipeId"];
             const recipeQueryCmdInput: QueryCommandInput = {
                 TableName: recipeTableName,
                 ExpressionAttributeValues: {
@@ -99,13 +100,13 @@ export async function handler (event: APIGatewayEvent, context: Context) {
         const scanCmd = new ScanCommand({
             TableName: recipeTableName,
             //AttributesToGet: ["recipeId", "itemId", "name", "entityType"],
-            Limit: limit,
+            // Limit: limit,
             FilterExpression: "entityType = :entityType",
             ExpressionAttributeValues: {
                 ":entityType": {
                     S: "RECIPE"
                 }
-            }
+            },
         });
         const data = await ddbClient.send(scanCmd);
         const unmarshalledItems = data.Items?.map(item => {
@@ -113,9 +114,10 @@ export async function handler (event: APIGatewayEvent, context: Context) {
             return {
                 recipeId: recipeItem.recipeId,
                 itemId: recipeItem.itemId,
+                userId: recipeItem.userId,
                 name: recipeItem.name
             }
-        });
+        }).splice(0, limit);
         return {
             statusCode: 200,
             body: JSON.stringify({

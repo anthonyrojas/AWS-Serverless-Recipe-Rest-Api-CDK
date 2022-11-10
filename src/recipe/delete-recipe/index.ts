@@ -24,11 +24,11 @@ export async function handler(event: APIGatewayEvent, context: Context) {
         const ddbClient = new DynamoDBClient({
             region: 'us-west-2'
         });
-        if(event.pathParameters === null || event.pathParameters["id"] === undefined || event.pathParameters["id"] === null) {
+        if(event.pathParameters === null || event.pathParameters["recipeId"] === undefined || event.pathParameters["recipeId"] === null) {
             httpStatus = 400;
             throw new Error("Failed to specify a recipe id. Unable to delete any recipe.");
         }
-        const id: string = event.pathParameters["id"] || "";
+        const id: string = event.pathParameters["recipeId"]!;
         if(id === "") {
             httpStatus = 404;
             throw new Error("Failed to specify a recipe id. Unable to delete any recipe.");

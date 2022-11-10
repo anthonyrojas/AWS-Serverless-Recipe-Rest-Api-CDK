@@ -4,7 +4,8 @@ import {Instruction, IInstruction} from "./instruction.model";
 const ENTITY_TYPE = "RECIPE";
 export interface IRecipe {
     recipeId?: string;
-    itemId?: string; //userId
+    itemId?: string; //same as recipeId
+    userId: string;
     entityType?: string;
     name: string;
     description: string;
@@ -15,7 +16,8 @@ export interface IRecipe {
 }
 export class Recipe implements IRecipe {
     recipeId: string;
-    itemId: string; //userId
+    itemId: string; //same as recipeId
+    userId: string;
     entityType: string;
     name: string;
     description: string;
@@ -26,7 +28,8 @@ export class Recipe implements IRecipe {
     constructor(userId: string, pName: string, pDescription: string, pCookTime: Number, pPrepTime: Number, pId?: string) {
         if (pId === undefined || pId === null) this.recipeId = uuid();
         else this.recipeId = pId;
-        this.itemId = userId;
+        this.itemId = this.recipeId;
+        this.userId = userId;
         this.name = pName.trim();
         this.description = pDescription.trim();
         this.cookTime = pCookTime;
@@ -37,18 +40,19 @@ export class Recipe implements IRecipe {
     }
     attachIIngredients(iIngredients: IIngredient[]) {
         this.ingredients = iIngredients.map(iIngredient => {
-            return new Ingredient(this.recipeId, iIngredient.name, iIngredient.quantity, iIngredient.units);
+            return new Ingredient(this.recipeId, this.userId, iIngredient.name, iIngredient.quantity, iIngredient.units);
         });
     }
     attachIInstructions(iInstructions: IInstruction[]) {
         this.instructions = iInstructions.map(iInstruction => {
-            return new Instruction(this.recipeId, iInstruction.step, iInstruction.order);
+            return new Instruction(this.recipeId, this.userId, iInstruction.step, iInstruction.order);
         })
         //this.instructions = new Instructions(this.recipeId, iInstructions.steps);
     }
     toPutRequestItem() {
         return {
             recipeId: this.recipeId,
+            userId: this.userId,
             itemId: this.itemId,
             entityType: this.entityType,
             name: this.name,

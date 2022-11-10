@@ -6,17 +6,20 @@ export interface IInstruction {
     entityType?: string;
     order: Number;
     step: string;
+    userId?: string;
 }
 export class Instruction implements IInstruction {
     itemId: string;
     recipeId: string;
+    userId: string;
     entityType: string;
     order: Number;
     step: string;
-    constructor(pRecipeId: string, pStep: string, pOrder: Number, pId: string|null = null) {
+    constructor(pRecipeId: string, pUserId: string, pStep: string, pOrder: Number, pId: string|null = null) {
         if (pId === null) this.itemId = uuid();
         else this.itemId = pId;
         this.recipeId = pRecipeId;
+        this.userId = pUserId;
         this.step = pStep.trim();
         this.order = pOrder;
         this.entityType = ENTITY_TYPE;
@@ -24,6 +27,7 @@ export class Instruction implements IInstruction {
     toPutRequestItem() {
         return {
             recipeId: this.recipeId,
+            userId: this.userId,
             itemId: this.itemId,
             entityType: this.entityType,
             step: this.step,

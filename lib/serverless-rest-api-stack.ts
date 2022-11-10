@@ -35,25 +35,36 @@ import * as path from 'path'
 
 export class ServerlessRestApiStack extends cdk.Stack {
 
+  private readonly LAMBDA_RUNTIME = Runtime.NODEJS_16_X;
   public readonly API_NAME: string = "RecipeHttpApi";
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
     const {recipesTable} = this.addDynamoDbTables();
-    //define lambda resources
-    const createRecipeLambda: NodejsFunction = this.addCreateRecipeLambda(recipesTable);
-    const getRecipeLambda: NodejsFunction = this.addGetRecipeLambda(recipesTable);
-    const updateRecipeLambda: NodejsFunction = this.addUpdateRecipeLambda(recipesTable);
-    const deleteRecipeLambda: NodejsFunction = this.addDeleteRecipeLambda(recipesTable);
-    //grant dynamo permissions to lambda functions
-    recipesTable.grantReadData(getRecipeLambda);
+    //define recipe lambda resources
+    const recipeLambdas = this.addRecipeLambdas(recipesTable);
+    const createRecipeLambda: NodejsFunction = recipeLambdas['create-recipe'];
+    const getRecipeLambda: NodejsFunction = recipeLambdas['get-recipe'];
+    const updateRecipeLambda: NodejsFunction = recipeLambdas['update-recipe'];
+    const deleteRecipeLambda: NodejsFunction = recipeLambdas['delete-recipe'];
 
+    //grant dynamo permissions to recipe lambda functions
+    recipesTable.grantReadData(getRecipeLambda);
     recipesTable.grantWriteData(createRecipeLambda);
-    
     recipesTable.grantReadWriteData(deleteRecipeLambda);
-    
     recipesTable.grantReadWriteData(updateRecipeLambda);
+
+    //define ingredient lambda resources
+    const ingredientLambdas = this.addIngredientLambdas(recipesTable);
+    const createIngredientLambda: NodejsFunction = ingredientLambdas['create-ingredient'];
+    const updateIngredientLambda: NodejsFunction = ingredientLambdas['update-ingredient'];
+    const deleteIngredientLambda: NodejsFunction = ingredientLambdas['delete-ingredient'];
+
+    //grant DDB permissions to ingredient lambda functions
+    recipesTable.grantReadWriteData(createIngredientLambda);
+    recipesTable.grantReadWriteData(updateIngredientLambda);
+    recipesTable.grantReadWriteData(deleteIngredientLambda);
 
     const {userPool} = this.addCognitoResources();
 
@@ -98,7 +109,7 @@ export class ServerlessRestApiStack extends cdk.Stack {
         burstLimit: 100
       },
       quota: {
-        limit: 1000, 
+        limit: 2500, 
         period: Period.MONTH
       },
       apiStages: [
@@ -119,23 +130,23 @@ export class ServerlessRestApiStack extends cdk.Stack {
     });
     
     const recipeResource = api.root.addResource('recipe');
-    const recipeIdResource = recipeResource.addResource("{id}");
-    const instructionsResource = recipeIdResource.addResource("instructions");
-    //const ingredientsResource = recipeIdResource.addResource("ingredients");
-    const instructionResource = recipeIdResource.addResource("instruction");
+    const recipeIdResource = recipeResource.addResource("{recipeId}");
+    // const instructionsResource = recipeIdResource.addResource("instructions");
+    // const instructionResource = recipeIdResource.addResource("instruction");
     const ingredientResource = recipeIdResource.addResource("ingredient")
     
+    /* Recipe Routes */
     recipeResource
     .addMethod('POST', new LambdaIntegration(createRecipeLambda), {
       apiKeyRequired: true,
       authorizer: authorizer,
       authorizationType: AuthorizationType.COGNITO
     });
-    
+
     recipeIdResource
     .addMethod('GET', new LambdaIntegration(getRecipeLambda), {
       requestParameters: {
-        "method.request.path.id": true
+        "method.request.path.recipeId": true
       },
       apiKeyRequired: true
     });
@@ -143,7 +154,7 @@ export class ServerlessRestApiStack extends cdk.Stack {
     recipeIdResource
     .addMethod('PUT', new LambdaIntegration(updateRecipeLambda), {
       requestParameters: {
-        "method.request.path.id": true
+        "method.request.path.recipeId": true
       },
       apiKeyRequired: true,
       authorizer: authorizer,
@@ -153,12 +164,43 @@ export class ServerlessRestApiStack extends cdk.Stack {
     recipeIdResource
     .addMethod('DELETE', new LambdaIntegration(deleteRecipeLambda), {
       requestParameters: {
-        "method.request.path.id": true
+        "method.request.path.recipeId": true
       },
       apiKeyRequired: true,
       authorizer: authorizer,
       authorizationType: AuthorizationType.COGNITO
-    })
+    });
+
+    /* Ingredient Routes */
+    ingredientResource
+    .addMethod('POST', new LambdaIntegration(createIngredientLambda), {
+      apiKeyRequired: true,
+      authorizer: authorizer,
+      authorizationType: AuthorizationType.COGNITO
+    });
+
+    const ingredientIdResource = ingredientResource.addResource("{ingredientId}");
+    ingredientIdResource.addMethod("PUT", new LambdaIntegration(updateIngredientLambda), {
+      requestParameters: {
+        "method.request.path.ingredientId": true,
+      },
+      apiKeyRequired: true,
+      authorizer: authorizer,
+      authorizationType: AuthorizationType.COGNITO
+    });
+    
+    ingredientIdResource
+    .addMethod("DELETE", new LambdaIntegration(deleteIngredientLambda), {
+      requestParameters: {
+        "method.request.path.ingredientId": true
+      },
+      apiKeyRequired: true,
+      authorizer: authorizer,
+      authorizationType: AuthorizationType.COGNITO
+    });
+
+    /* Instruction Routes  */
+
   }
   addCognitoResources() {
     const userPool = new UserPool(this, 'RecipeApiUserPool', {
@@ -226,7 +268,7 @@ export class ServerlessRestApiStack extends cdk.Stack {
     }
   }
   addDynamoDbTables() {
-    const recipesTable = new Table(this, 'RecipesTable', {
+    const recipesTable = new Table(this, 'RecipesApiTable', {
       //tableName: 'Recipes',
       partitionKey: {
         name: "recipeId",
@@ -238,73 +280,129 @@ export class ServerlessRestApiStack extends cdk.Stack {
       }
     });
     recipesTable.addGlobalSecondaryIndex({
-      indexName: "UserIndex",
+      indexName: "UserItemIndex",
       partitionKey: {
-        name: "itemId", //contains userId
+        name: "userId",
         type: AttributeType.STRING
       },
       sortKey: {
-        name: "recipeId",
+        name: "itemId",
         type: AttributeType.STRING
       }
-    })
+    });
     return {
       recipesTable
     }
   }
-  addGetRecipeLambda(recipesTable: Table): NodejsFunction {
-    const getRecipeLambda = new NodejsFunction(this, 'get-recipe', {
-      environment: {
-        RECIPES_TABLE_NAME: recipesTable.tableName
+  addRecipeLambdas(recipeTable: Table): Record<string, NodejsFunction> {
+    const functionSpecs = [
+      {
+        name: 'get-recipe',
+        description: 'Lambda function to retrieve a recipe or list of recipes from DynamoDB',
+        memorySize: 256
       },
-      memorySize: 256,
-      timeout: cdk.Duration.seconds(15),
-      description: 'Lambda function to retrieve a recipe or list of recipes from DynamoDB',
-      runtime: Runtime.NODEJS_16_X,
-      handler: 'handler',
-      entry: path.join(__dirname, '/../src/get-recipe/index.ts')
+      {
+        name: 'create-recipe',
+        description: 'Lambda function to create a recipe and insert it into DynamoDB',
+        memorySize: 128
+      },
+      {
+        name: 'delete-recipe',
+        description: 'Lambda function to delete a recipe from DynamoDB',
+        memorySize: 128
+      },
+      {
+        name: 'update-recipe',
+        description: 'Lambda function to update recipe in DynamoDB',
+        memorySize: 128
+      }
+    ];
+    const functions: Record<string, NodejsFunction> = {}
+    functionSpecs.forEach(functionSpec => {
+      const lambda: NodejsFunction = new NodejsFunction(this, functionSpec.name, {
+        environment: {
+          RECIPES_TABLE_NAME: recipeTable.tableName
+        },
+        memorySize: functionSpec.memorySize,
+        timeout: cdk.Duration.seconds(10),
+        description: functionSpec.description,
+        runtime: this.LAMBDA_RUNTIME,
+        handler: 'handler',
+        entry: path.join(__dirname, `/../src/recipe/${functionSpec.name}/index.ts`)
+      })
+      functions[functionSpec.name] = lambda;
     });
-    return getRecipeLambda;
+    return functions;
   }
-  addCreateRecipeLambda(recipesTable: Table): NodejsFunction {
-    const createRecipeLambda = new NodejsFunction(this, 'create-recipe', {
-      environment: {
-        RECIPES_TABLE_NAME: recipesTable.tableName
+  addIngredientLambdas(recipesTable: Table): Record<string, NodejsFunction> {
+    const functionSpecs = [
+      {
+        name: 'create-ingredient',
+        description: 'Lambda function to add an ingredient to an existing recipe',
+        memorySize: 128
       },
-      memorySize: 128,
-      timeout: cdk.Duration.seconds(15),
-      description: 'Lambda function to create a recipe and insert it into DynamoDB',
-      runtime: Runtime.NODEJS_16_X,
-      handler: 'handler',
-      entry: path.join(__dirname, '/../src/create-recipe/index.ts')
+      {
+        name: 'delete-ingredient',
+        description: 'Lambda function to delete an ingredient for an existing recipe',
+        memorySize: 128
+      },
+      {
+        name: 'update-ingredient',
+        description: 'Lambda function to update an ingredient for an existing recipe',
+        memorySize: 128
+      }
+    ];
+    const functions: Record<string, NodejsFunction> = {};
+    functionSpecs.forEach(functionSpec => {
+      const lambda: NodejsFunction = new NodejsFunction(this, functionSpec.name, {
+        environment: {
+          RECIPES_TABLE_NAME: recipesTable.tableName
+        },
+        memorySize: functionSpec.memorySize,
+        timeout: cdk.Duration.seconds(10),
+        description: functionSpec.description,
+        runtime: this.LAMBDA_RUNTIME,
+        handler: 'handler',
+        entry: path.join(__dirname, `/../src/ingredient/${functionSpec.name}/index.ts`)
+      });
+      functions[functionSpec.name] = lambda;
     });
-    return createRecipeLambda;
+    return functions;
   }
-  addDeleteRecipeLambda(recipesTable: Table): NodejsFunction {
-    return new NodejsFunction(this, 'delete-recipe', {
-      environment: {
-        RECIPES_TABLE_NAME: recipesTable.tableName
+  addInstructionLambdas(recipesTable: Table): Record<string, NodejsFunction> {
+    const functionSpecs = [
+      {
+        name: 'create-instruction',
+        description: 'Lambda function to add an instruction to an existing recipe',
+        memorySize: 128
       },
-      memorySize: 128,
-      timeout: cdk.Duration.seconds(15),
-      description: 'Lambda function to delete a recipe from DynamoDB',
-      runtime: Runtime.NODEJS_16_X,
-      handler: 'handler',
-      entry: path.join(__dirname, "/../src/delete-recipe/index.ts")
+      {
+        name: 'update-instruction',
+        description: 'Lambda function to update an instruction for an existing recipe',
+        memorySize: 128
+      },
+      {
+        name: 'delete-instruction',
+        description: 'Lambda function to delete an instruction for an existing recipe',
+        memorySize: 128
+      }
+    ];
+    const functions: Record<string, NodejsFunction> = {};
+    functionSpecs.forEach(functionSpec => {
+      const lambda = new NodejsFunction(this, functionSpec.name, {
+        environment: {
+          RECIPES_TABLE_NAME: recipesTable.tableName
+        },
+        memorySize: functionSpec.memorySize,
+        timeout: cdk.Duration.seconds(10),
+        description: functionSpec.description,
+        runtime: this.LAMBDA_RUNTIME,
+        handler: 'handler',
+        entry: path.join(__dirname, `/../src/recipe/${functionSpec.name}/index.ts`)
+      });
+      functions[functionSpec.name] = lambda;
     });
-  }
-  addUpdateRecipeLambda(recipesTable: Table): NodejsFunction {
-    return new NodejsFunction(this, 'update-recipe', {
-      environment: {
-        RECIPES_TABLE_NAME: recipesTable.tableName
-      },
-      memorySize: 128,
-      timeout: cdk.Duration.seconds(15),
-      description: 'Lambda function to update recipe in DynamoDB',
-      runtime: Runtime.NODEJS_16_X,
-      handler: 'handler',
-      entry: path.join(__dirname, '/../src/update-recipe/index.ts')
-    })
+    return functions;
   }
   addRecipePictureBucket() {
     return new Bucket(this, 'RecipePicturesBucket', {

@@ -4,15 +4,13 @@ import {
 } from 'aws-lambda';
 import {
     DynamoDBClient,
-    //PutItemCommand,
     BatchWriteItemCommand,
-    //PutRequest,
     BatchWriteItemCommandInput
 } from '@aws-sdk/client-dynamodb';
 import {
     marshall
 } from '@aws-sdk/util-dynamodb'
-import {Recipe, IRecipe} from "../models/recipe.model";
+import {Recipe, IRecipe} from "../../models/recipe.model";
 
 export async function handler (event: APIGatewayEvent, context: Context) {
     let statusCode = 200;
@@ -75,22 +73,6 @@ export async function handler (event: APIGatewayEvent, context: Context) {
                 recipe: recipe
             })
         }
-        // const createRecipeCmd = new PutItemCommand({
-        //     TableName: recipeTableName,
-        //     Item: marshall({
-        //         id: recipeId,
-        //         ...requestBody
-        //     })
-        // });
-        
-        // await ddbClient.send(createRecipeCmd);
-        // return {
-        //     statusCode: 201,
-        //     body: JSON.stringify({
-        //         id: recipeId,
-        //         name: requestBody.name
-        //     })
-        // }
     }catch(e: any){
         console.log(e.message);
         console.log(e);

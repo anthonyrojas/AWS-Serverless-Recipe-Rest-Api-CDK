@@ -9,7 +9,7 @@ import {
 import {
     marshall
 } from '@aws-sdk/util-dynamodb';
-import { IRecipe } from "../models/recipe.model";
+import { IRecipe } from "../../models/recipe.model";
 
 export async function handler(event: APIGatewayEvent, context: Context) {
     let httpStatus = 200;
@@ -22,7 +22,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
         const ddbClient = new DynamoDBClient({
             region: 'us-west-2'
         });
-        if(event.pathParameters === null || event.pathParameters["id"] === undefined || event.pathParameters["id"] === null || event.pathParameters["id"] === "") {
+        if(event.pathParameters === null || event.pathParameters["recipeId"] === undefined || event.pathParameters["recipeId"] === null || event.pathParameters["recipeId"] === "") {
             httpStatus = 400;
             throw new Error("Failed to specify a recipe id. Unable to update any recipe.");
         }
@@ -30,7 +30,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
             httpStatus = 400;
             throw new Error('Missing fields to update.');
         }
-        const id: string = event.pathParameters["id"];
+        const id: string = event.pathParameters["recipeId"];
         const requestBody: IRecipe = JSON.parse(event.body);
         const putItemCmd = new PutItemCommand({
             TableName: recipeTableName,
@@ -38,9 +38,12 @@ export async function handler(event: APIGatewayEvent, context: Context) {
                 ...requestBody,
                 id: id
             }),
-            ConditionExpression: "recipeId = :id and etityType = :entityType",
+            ConditionExpression: "recipeId = :id and itemId = :itemId and etityType = :entityType",
             ExpressionAttributeValues: {
                 ":id": {
+                    S: id
+                },
+                ":itemId": {
                     S: id
                 },
                 ":entityType": {
