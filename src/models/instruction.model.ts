@@ -4,7 +4,7 @@ export interface IInstruction {
     itemId?: string;
     recipeId?: string;
     entityType?: string;
-    order: Number;
+    order: number;
     step: string;
     userId?: string;
 }
@@ -13,9 +13,9 @@ export class Instruction implements IInstruction {
     recipeId: string;
     userId: string;
     entityType: string;
-    order: Number;
+    order: number;
     step: string;
-    constructor(pRecipeId: string, pUserId: string, pStep: string, pOrder: Number, pId: string|null = null) {
+    constructor(pRecipeId: string, pUserId: string, pStep: string, pOrder: number, pId: string|null = null) {
         if (pId === null) this.itemId = uuid();
         else this.itemId = pId;
         this.recipeId = pRecipeId;

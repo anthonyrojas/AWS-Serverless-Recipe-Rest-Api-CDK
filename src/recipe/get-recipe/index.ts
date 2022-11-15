@@ -126,33 +126,6 @@ export async function handler (event: APIGatewayEvent, context: Context) {
                 lastEvaluatedKey: !data.LastEvaluatedKey ? undefined : unmarshall(data.LastEvaluatedKey)
             })
         }
-        //let startKey = null;
-        // if (queryParams["recipeId"] || queryParams["userId"])
-        // const scanCmd = new ScanCommand({
-        //     TableName: recipeTableName,
-        //     AttributesToGet: ["id", "userId", "name"],
-        //     Limit: limit,
-        //     ExclusiveStartKey: {
-        //         id: {
-        //             S: queryParams["recipeId"]
-        //         },
-        //         userId: {
-        //             S: queryParams["userId"]
-        //         }
-        //     }
-        // })
-        // const data = await ddbClient.send(scanCmd);
-        // if(data === null || data.Items === undefined){
-        //     statusCode = 404;
-        //     throw new Error(`Cannot find any recipes. Try creating some!`);
-        // }
-        // const unmarshalledItems = data.Items.map(item => unmarshall(item));
-        // return {
-        //     statusCode: 200,
-        //     body: JSON.stringify({
-        //         recipes: []
-        //     })
-        // }
     } catch(e: any) {
         console.log(e);
         return {

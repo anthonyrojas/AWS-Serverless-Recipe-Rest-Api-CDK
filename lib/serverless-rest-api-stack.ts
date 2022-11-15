@@ -32,6 +32,7 @@ import {
   UserPoolEmail,
 } from 'aws-cdk-lib/aws-cognito'
 import * as path from 'path'
+import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 
 export class ServerlessRestApiStack extends cdk.Stack {
 
@@ -65,6 +66,17 @@ export class ServerlessRestApiStack extends cdk.Stack {
     recipesTable.grantReadWriteData(createIngredientLambda);
     recipesTable.grantReadWriteData(updateIngredientLambda);
     recipesTable.grantReadWriteData(deleteIngredientLambda);
+
+    //define instruction lambda resources
+    const instructionLambdas = this.addInstructionLambdas(recipesTable);
+    const createInstructionLambda: NodejsFunction = instructionLambdas["create-instruction"];
+    const updateInstructionLambda: NodejsFunction = instructionLambdas["update-instruction"];
+    const deleteInstructionLambda: NodejsFunction = instructionLambdas["delete-instruction"];
+
+    //grant DDB permissions to instruction lambda functions
+    recipesTable.grantReadWriteData(createInstructionLambda);
+    recipesTable.grantReadWriteData(updateInstructionLambda);
+    recipesTable.grantReadWriteData(deleteInstructionLambda);
 
     const {userPool} = this.addCognitoResources();
 
@@ -131,8 +143,8 @@ export class ServerlessRestApiStack extends cdk.Stack {
     
     const recipeResource = api.root.addResource('recipe');
     const recipeIdResource = recipeResource.addResource("{recipeId}");
-    // const instructionsResource = recipeIdResource.addResource("instructions");
-    // const instructionResource = recipeIdResource.addResource("instruction");
+    const instructionResource = recipeIdResource.addResource("instruction");
+    const instructionIdResource = instructionResource.addResource("{instructionId}");
     const ingredientResource = recipeIdResource.addResource("ingredient")
     
     /* Recipe Routes */
@@ -200,7 +212,32 @@ export class ServerlessRestApiStack extends cdk.Stack {
     });
 
     /* Instruction Routes  */
+    instructionResource
+    .addMethod("POST", new LambdaIntegration(createInstructionLambda), {
+      apiKeyRequired: true,
+      authorizer: authorizer,
+      authorizationType: AuthorizationType.COGNITO
+    });
 
+    instructionIdResource
+    .addMethod("PUT", new LambdaIntegration(updateInstructionLambda), {
+      requestParameters: {
+        "method.request.path.instructionId": true
+      },
+      apiKeyRequired: true,
+      authorizer: authorizer,
+      authorizationType: AuthorizationType.COGNITO
+    });
+
+    instructionIdResource
+    .addMethod("DELETE", new LambdaIntegration(deleteInstructionLambda), {
+      requestParameters: {
+        "method.request.path.instructionId": true
+      },
+      apiKeyRequired: true,
+      authorizer: authorizer,
+      authorizationType: AuthorizationType.COGNITO
+    });
   }
   addCognitoResources() {
     const userPool = new UserPool(this, 'RecipeApiUserPool', {
@@ -277,7 +314,9 @@ export class ServerlessRestApiStack extends cdk.Stack {
       sortKey: {
         name: "itemId", //will contain userId and unique id of ingredient and instructions
         type: AttributeType.STRING
-      }
+      },
+      readCapacity: 10,
+      writeCapacity: 10
     });
     recipesTable.addGlobalSecondaryIndex({
       indexName: "UserItemIndex",
@@ -328,7 +367,8 @@ export class ServerlessRestApiStack extends cdk.Stack {
         description: functionSpec.description,
         runtime: this.LAMBDA_RUNTIME,
         handler: 'handler',
-        entry: path.join(__dirname, `/../src/recipe/${functionSpec.name}/index.ts`)
+        entry: path.join(__dirname, `/../src/recipe/${functionSpec.name}/index.ts`),
+        logRetention: RetentionDays.ONE_WEEK
       })
       functions[functionSpec.name] = lambda;
     });
@@ -363,7 +403,8 @@ export class ServerlessRestApiStack extends cdk.Stack {
         description: functionSpec.description,
         runtime: this.LAMBDA_RUNTIME,
         handler: 'handler',
-        entry: path.join(__dirname, `/../src/ingredient/${functionSpec.name}/index.ts`)
+        entry: path.join(__dirname, `/../src/ingredient/${functionSpec.name}/index.ts`),
+        logRetention: RetentionDays.ONE_WEEK
       });
       functions[functionSpec.name] = lambda;
     });
@@ -398,7 +439,8 @@ export class ServerlessRestApiStack extends cdk.Stack {
         description: functionSpec.description,
         runtime: this.LAMBDA_RUNTIME,
         handler: 'handler',
-        entry: path.join(__dirname, `/../src/recipe/${functionSpec.name}/index.ts`)
+        entry: path.join(__dirname, `/../src/instruction/${functionSpec.name}/index.ts`),
+        logRetention: RetentionDays.ONE_WEEK
       });
       functions[functionSpec.name] = lambda;
     });
