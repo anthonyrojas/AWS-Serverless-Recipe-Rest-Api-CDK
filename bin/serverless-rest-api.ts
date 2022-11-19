@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
-import { ServerlessRestApiStack } from '../lib/serverless-rest-api-stack';
 import { DatabaseStack } from '../lib/DatabaseStack';
 import { LambdaStack } from '../lib/LambdaStack';
 import { AuthStack } from '../lib/AuthStack';

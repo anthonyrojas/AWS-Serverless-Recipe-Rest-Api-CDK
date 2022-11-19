@@ -9,7 +9,11 @@ import {
     ApiKey,
     ApiKeySourceType,
     CognitoUserPoolsAuthorizer,
-    AuthorizationType
+    AuthorizationType,
+    Model,
+    JsonSchemaVersion,
+    JsonSchemaType,
+    RequestValidator
 } from 'aws-cdk-lib/aws-apigateway';
 
 interface RestApiStackProps extends cdk.StackProps {
@@ -28,6 +32,7 @@ interface RestApiStackProps extends cdk.StackProps {
 
 export class RestApiStack extends cdk.Stack {
     private readonly API_NAME: string = "RecipeRestApi";
+    private readonly JSON_CONTENT_TYPE = "application/json";
     constructor(scope: Construct, id: string, props: RestApiStackProps) {
         super(scope, id, props);
         const api = new RestApi(this, this.API_NAME, {
@@ -49,7 +54,15 @@ export class RestApiStack extends cdk.Stack {
                     'OPTIONS'
                 ]
             },
-            apiKeySourceType: ApiKeySourceType.HEADER
+            apiKeySourceType: ApiKeySourceType.HEADER,
+            // deployOptions: {
+            //     methodOptions: {
+            //         '/*': {
+            //             throttlingBurstLimit: 100,
+            //             throttlingRateLimit: 100
+            //         }
+            //     }
+            // }
         });
 
         const authorizer = new CognitoUserPoolsAuthorizer(this, 'RestApiCognitoAuthorizer', {
@@ -61,7 +74,7 @@ export class RestApiStack extends cdk.Stack {
         });
 
         const apiKey = new ApiKey(this, 'RecipeApiDevApiKey', {
-            apiKeyName: 'apiWebKey'
+            apiKeyName: 'apiWebKey',
         })
 
         const usagePlan = api.addUsagePlan('RecipeApiUsagePlan', {
@@ -77,12 +90,16 @@ export class RestApiStack extends cdk.Stack {
             apiStages: [
                 {
                     stage: api.deploymentStage,
-                    api: api,
+                    api: api
                 }
             ],
         });
         usagePlan.addApiKey(apiKey);
 
+        /* Request Models */
+        const recipeRequestModel = this.addRecipeRequestModel(api);
+        const ingredientRequestModel = this.addIngredientRequestModel(api);
+        const instructionRequestModel = this.addInstructionRequestModel(api);
 
         /* Add routes with lambda handlers */
         api.root
@@ -102,7 +119,14 @@ export class RestApiStack extends cdk.Stack {
         .addMethod('POST', new LambdaIntegration(props.createRecipeLambda), {
             apiKeyRequired: true,
             authorizer: authorizer,
-            authorizationType: AuthorizationType.COGNITO
+            authorizationType: AuthorizationType.COGNITO,
+            requestValidator: new RequestValidator(this, 'CreateRecipeRequestBodyValidator', {
+                validateRequestBody: true,
+                restApi: api
+            }),
+            requestModels: {
+                'application/json': recipeRequestModel
+            }
         });
 
         recipeIdResource
@@ -120,6 +144,13 @@ export class RestApiStack extends cdk.Stack {
             },
             apiKeyRequired: true,
             authorizer: authorizer,
+            requestValidator: new RequestValidator(this, 'UpdateRecipeRequestBodyValidator', {
+                validateRequestBody: true,
+                restApi: api
+            }),
+            requestModels: {
+                'application/json': recipeRequestModel
+            },
             authorizationType: AuthorizationType.COGNITO
         });
 
@@ -138,7 +169,14 @@ export class RestApiStack extends cdk.Stack {
         .addMethod('POST', new LambdaIntegration(props.createIngredientLambda), {
             apiKeyRequired: true,
             authorizer: authorizer,
-            authorizationType: AuthorizationType.COGNITO
+            authorizationType: AuthorizationType.COGNITO,
+            requestValidator: new RequestValidator(this, 'CreateIngredientRequestBodyValidator', {
+                validateRequestBody: true,
+                restApi: api
+            }),
+            requestModels: {
+                'application/json': ingredientRequestModel
+            }
         });
 
         const ingredientIdResource = ingredientResource.addResource("{ingredientId}");
@@ -148,7 +186,14 @@ export class RestApiStack extends cdk.Stack {
             },
             apiKeyRequired: true,
             authorizer: authorizer,
-            authorizationType: AuthorizationType.COGNITO
+            authorizationType: AuthorizationType.COGNITO,
+            requestValidator: new RequestValidator(this, 'UpdateIngredientRequestBodyValidator', {
+                validateRequestBody: true,
+                restApi: api
+            }),
+            requestModels: {
+                'application/json': ingredientRequestModel
+            }
         });
 
         ingredientIdResource
@@ -166,7 +211,14 @@ export class RestApiStack extends cdk.Stack {
         .addMethod("POST", new LambdaIntegration(props.createInstructionLambda), {
             apiKeyRequired: true,
             authorizer: authorizer,
-            authorizationType: AuthorizationType.COGNITO
+            authorizationType: AuthorizationType.COGNITO,
+            requestValidator: new RequestValidator(this, 'CreateInstructionRequestBodyValidator', {
+                validateRequestBody: true,
+                restApi: api
+            }),
+            requestModels: {
+                'application/json': instructionRequestModel
+            }
         });
 
         instructionIdResource
@@ -176,7 +228,14 @@ export class RestApiStack extends cdk.Stack {
             },
             apiKeyRequired: true,
             authorizer: authorizer,
-            authorizationType: AuthorizationType.COGNITO
+            authorizationType: AuthorizationType.COGNITO,
+            requestValidator: new RequestValidator(this, 'UpdateInstructionRequestBodyValidator', {
+                validateRequestBody: true,
+                restApi: api
+            }),
+            requestModels: {
+                'application/json': instructionRequestModel
+            }
         });
 
         instructionIdResource
@@ -188,5 +247,112 @@ export class RestApiStack extends cdk.Stack {
             authorizer: authorizer,
             authorizationType: AuthorizationType.COGNITO
         });
+    }
+    addRecipeRequestModel(api: RestApi): Model {
+        const requestModel = api.addModel('RecipeRequestModel', {
+            contentType: this.JSON_CONTENT_TYPE,
+            modelName: "RecipeRequestModel",
+            schema: {
+                schema: JsonSchemaVersion.DRAFT4,
+                title: "recipeRequest",
+                type: JsonSchemaType.OBJECT,
+                properties: {
+                    name: {
+                        type: JsonSchemaType.STRING,
+                        maxLength: 500
+                    },
+                    description: {
+                        type: JsonSchemaType.STRING
+                    },
+                    cookTime: {
+                        type: JsonSchemaType.INTEGER
+                    },
+                    prepTime: {
+                        type: JsonSchemaType.INTEGER
+                    },
+                    ingredients: {
+                        type: JsonSchemaType.ARRAY,
+                        items: {
+                            type: JsonSchemaType.OBJECT,
+                            properties: {
+                                name: {
+                                    type: JsonSchemaType.STRING
+                                },
+                                quantity: {
+                                    type: JsonSchemaType.NUMBER
+                                },
+                                units: {
+                                    type: JsonSchemaType.STRING,
+                                    minLength: 0,
+                                    maxLength: 100
+                                },
+                            }
+                        },
+                        minLength: 0
+                    },
+                    instructions: {
+                        type: JsonSchemaType.ARRAY,
+                        items: {
+                            type: JsonSchemaType.OBJECT,
+                            properties: {
+                                order: {
+                                    type: JsonSchemaType.INTEGER
+                                },
+                                step: {
+                                    type: JsonSchemaType.STRING
+                                }
+                            }
+                        },
+                        minLength: 0
+                    }
+                }
+            }
+        });
+        return requestModel;
+    }
+    addIngredientRequestModel(api: RestApi): Model {
+        const requestModel = api.addModel('IngredientRequestModel', {
+            contentType: this.JSON_CONTENT_TYPE,
+            modelName: 'IngredientRequestModel',
+            schema: {
+                schema: JsonSchemaVersion.DRAFT4,
+                title: "ingredientRequest",
+                type: JsonSchemaType.OBJECT,
+                properties: {
+                    name: {
+                        type: JsonSchemaType.STRING
+                    },
+                    quantity: {
+                        type: JsonSchemaType.NUMBER
+                    },
+                    units: {
+                        type: JsonSchemaType.STRING,
+                        minLength: 0,
+                        maxLength: 100
+                    }
+                }
+            }
+        });
+        return requestModel;
+    }
+    addInstructionRequestModel(api: RestApi): Model {
+        const requestModel = api.addModel('InstructionRequestModel', {
+            contentType: this.JSON_CONTENT_TYPE,
+            modelName: 'InstructionRequestModel',
+            schema: {
+                schema: JsonSchemaVersion.DRAFT4,
+                title: 'instructionRequest',
+                type: JsonSchemaType.OBJECT,
+                properties: {
+                    order: {
+                        type: JsonSchemaType.INTEGER
+                    },
+                    step: {
+                        type: JsonSchemaType.STRING
+                    }
+                }
+            }
+        });
+        return requestModel;
     }
 }

@@ -6,9 +6,7 @@ import { marshall } from '@aws-sdk/util-dynamodb';
 import {
     DynamoDBClient,
     PutItemCommand,
-    PutItemCommandInput,
-    GetItemCommand,
-    GetItemCommandInput
+    PutItemCommandInput
 } from '@aws-sdk/client-dynamodb';
 import { IIngredient, Ingredient } from '../../models/ingredient.model';
 
@@ -32,25 +30,12 @@ export async function handler(event: APIGatewayEvent, context: Context) {
         const ddbClient = new DynamoDBClient({
             region: 'us-west-2'
         });
-        const getItemCmdInput: GetItemCommandInput = {
-            TableName: recipeTableName,
-            Key: marshall({
-                recipeId: recipeId,
-                itemId: ingredientId
-            })
-        };
-        const getItemCmd: GetItemCommand = new GetItemCommand(getItemCmdInput);
-        const data = await ddbClient.send(getItemCmd);
-        if (data === undefined || data.Item === undefined) {
-            httpStatus = 400;
-            throw new Error('The current ingredient does not exist or could not be found.');
-        }
         const ingredient: Ingredient = new Ingredient(
             recipeId,
-            requestBody.name || data.Item["name"].toString(),
+            requestBody.name,
             userId,
-            requestBody.quantity || Number(data.Item["quantity"]),
-            requestBody.units || data.Item["units"].toString(),
+            requestBody.quantity,
+            requestBody.units,
             ingredientId
         );
         const putItemCmdInput: PutItemCommandInput = {
