@@ -14,10 +14,12 @@ The following is a list of improvements that are pending implementation.
 - [X] Add Models for request body validations to API gateway
 - [ ] Add Ratings functionality to the API for users
 - [ ] Flesh out README
-- [ ] Add a pipeline for code changes
+- [X] Add a pipeline for code changes
 - [X] Separate stacks by business domain
     - [X] Lambda Stack
     - [X] ApiGateway Stack
     - [X] Authentication Stack
     - [X] Database Stack
-- [ ] (Optional) Migrate Lambda functions to python
+- [ ] Add unit tests
+- [ ] Add integ tests
+- [ ] (Optional) Upgrade runtime to NodeJS 18

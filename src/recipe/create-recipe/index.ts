@@ -73,7 +73,8 @@ export async function handler (event: APIGatewayEvent, context: Context) {
                 recipe: recipe
             })
         }
-    }catch(e: any){
+    }catch(error){
+        const e = error as Error;
         console.log(e.message);
         console.log(e);
         return {

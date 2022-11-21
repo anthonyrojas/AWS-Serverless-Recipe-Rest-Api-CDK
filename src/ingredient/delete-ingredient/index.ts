@@ -54,11 +54,11 @@ export async function handler(event: APIGatewayEvent, context: Context) {
                 message: `Deleted ingredient ${ingredientId} for recipe ${recipeId}.`
             })
         }
-    } catch (error: any) {
+    } catch (error) {
         return {
             statusCode: httpStatus < 400 ? 400 : httpStatus,
             body: JSON.stringify({
-                error: error.message
+                error: (error as Error).message
             })
         }
     }

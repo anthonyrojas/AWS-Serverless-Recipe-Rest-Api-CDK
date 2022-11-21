@@ -126,7 +126,8 @@ export async function handler (event: APIGatewayEvent, context: Context) {
                 lastEvaluatedKey: !data.LastEvaluatedKey ? undefined : unmarshall(data.LastEvaluatedKey)
             })
         }
-    } catch(e: any) {
+    } catch(error) {
+        const e = error as Error;
         console.log(e);
         return {
             statusCode: statusCode < 400 ? 400 : statusCode,

@@ -64,11 +64,11 @@ export async function handler(event: APIGatewayEvent, context: Context) {
                 ingredient: ingredient.toPutRequestItem()
             })
         };
-    } catch (error: any) {
+    } catch (error) {
         return {
             statusCode: httpStatus,
             body: JSON.stringify({
-                message: error.message
+                message: (error as Error).message
             })
         }
     }

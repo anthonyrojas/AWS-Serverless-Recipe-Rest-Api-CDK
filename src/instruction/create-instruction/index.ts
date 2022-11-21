@@ -122,12 +122,12 @@ export async function handler(event: APIGatewayEvent, context: Context) {
         //         ]
         //     }
         // }
-    } catch (error: any) {
+    } catch (error) {
         console.error(error);
-        console.error(error.message)
+        console.error((error as Error).message)
         return {
             statusCode: 200,
-            message: error.message
+            message: (error as Error).message
         }   
     }
 }

@@ -76,7 +76,8 @@ export async function handler(event: APIGatewayEvent, context: Context) {
                 message: `Successfully deleted recipe with id ${id}`
             })
         }
-    } catch (e: any) {
+    } catch (error) {
+        const e = error as Error;
         return {
             statusCode: httpStatus < 400 ? 400 : httpStatus,
             body: JSON.stringify({

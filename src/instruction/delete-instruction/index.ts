@@ -53,10 +53,10 @@ export async function handler(event: APIGatewayEvent, context: Context) {
                 message: `Deleted instruction ${instructionId} from recipe ${recipeId}`
             })
         };
-    } catch (error: any) {
+    } catch (error) {
         return {
             statusCode: statusCode < 400 ? 400 : statusCode,
-            message: error.message
+            message: (error as Error).message
         }
     }
 }
