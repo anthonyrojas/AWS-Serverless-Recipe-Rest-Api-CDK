@@ -17,13 +17,15 @@ export class PipelineStack extends cdk.Stack {
                     authentication: SecretValue.secretsManager("serverless-recipe-app-github-token")
                 }),
                 commands: [
-                    "cd bin",
+                    "npm install",
                     'npm ci',
                     'npm run build',
                     'npx cdk synth'
                 ],
-                primaryOutputDirectory: 'bin/cdk.out'
-            })
+                primaryOutputDirectory: 'cdk.out'
+            }), 
+            dockerEnabledForSynth: true,
+            dockerEnabledForSelfMutation: true
         });
 
         pipeline.addStage(new ServerlessRecipeApiPipelineStage(this, 'ProdStage', {
