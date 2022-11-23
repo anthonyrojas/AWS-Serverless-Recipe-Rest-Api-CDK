@@ -100,6 +100,7 @@ export class RestApiStack extends cdk.Stack {
         const recipeRequestModel = this.addRecipeRequestModel(api);
         const ingredientRequestModel = this.addIngredientRequestModel(api);
         const instructionRequestModel = this.addInstructionRequestModel(api);
+        const instructionOrderRequestModel = this.addInstructionOrderRequestModel(api);
 
         /* Add routes with lambda handlers */
         api.root
@@ -219,6 +220,20 @@ export class RestApiStack extends cdk.Stack {
             requestModels: {
                 'application/json': instructionRequestModel
             }
+        });
+
+        instructionResource
+        .addMethod("PUT", new LambdaIntegration(props.updateInstructionLambda), {
+            apiKeyRequired: true,
+            authorizer: authorizer,
+            authorizationType: AuthorizationType.COGNITO,
+            requestModels: {
+                'application/json': instructionOrderRequestModel
+            },
+            requestValidator: new RequestValidator(this, 'UpdateInstructionOrderRequestBodyValidator', {
+                validateRequestBody: true,
+                restApi: api
+            })
         });
 
         instructionIdResource
@@ -349,6 +364,30 @@ export class RestApiStack extends cdk.Stack {
                     },
                     step: {
                         type: JsonSchemaType.STRING
+                    }
+                }
+            }
+        });
+        return requestModel;
+    }
+    addInstructionOrderRequestModel(api: RestApi): Model {
+        const requestModel = api.addModel("InstructionOrderRequestModel", {
+            contentType: this.JSON_CONTENT_TYPE,
+            modelName: "InstructionOrderRequestModel",
+            schema: {
+                schema: JsonSchemaVersion.DRAFT4,
+                title: "instructionOrderRequest",
+                properties: {
+                    instructionOrders: {
+                        type: JsonSchemaType.ARRAY,
+                        properties: {
+                            order: {
+                                type: JsonSchemaType.INTEGER
+                            },
+                            itemId: {
+                                type: JsonSchemaType.STRING
+                            }
+                        }
                     }
                 }
             }

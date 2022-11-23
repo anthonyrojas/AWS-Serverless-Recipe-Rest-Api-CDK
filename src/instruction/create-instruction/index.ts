@@ -6,9 +6,9 @@ import {
     QueryCommand,
     QueryCommandInput,
     QueryCommandOutput,
-    // BatchWriteItemCommandInput,
-    // BatchWriteItemCommandOutput,
-    // BatchWriteItemCommand,
+    BatchWriteItemCommandInput,
+    BatchWriteItemCommandOutput,
+    BatchWriteItemCommand,
     PutItemCommandInput,
     PutItemCommand,
     DynamoDBClient
@@ -51,7 +51,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
         const queryCmd = new QueryCommand(queryCmdInput);
         const queryCmdOutput: QueryCommandOutput = await ddbClient.send(queryCmd);
         const eventBody: IInstruction = JSON.parse(event.body);
-        if (queryCmdOutput.Items === undefined) {
+        if (queryCmdOutput.Items === undefined || !queryCmdOutput.Count || queryCmdOutput.Count === 0) {
             console.log('Adding a new instruction for recipe without instructions');
             //add the instruction to the recipe as-is
             const instruction = new Instruction(
@@ -73,55 +73,67 @@ export async function handler(event: APIGatewayEvent, context: Context) {
                 })
             }
         }
-        let maxOrder = 0;
-        queryCmdOutput.Items!.forEach(item => {
-            const instruction: IInstruction = unmarshall(item) as IInstruction;
-            maxOrder = Math.max(maxOrder, instruction.order);
-        });
-        console.log(`Adding a new instruction to recipe with ${maxOrder} instructions`);
-        // const orders = queryCmdOutput.Items!.map(instruction => {
-        //     const unmarshalled: IInstruction = unmarshall(instruction) as IInstruction;
-        //     return unmarshalled;
-        // }).sort((a, b) => (a.order > b.order) ? 1 : -1);
-        // const order = orders[0].order + 1;
-        const instruction = new Instruction(
+        console.log(`Adding a new instruction to recipe with ${queryCmdOutput.Count} instructions`);
+        let newInstructionOrder = Number(eventBody.order);
+        //decide final order
+        if(newInstructionOrder < 1) newInstructionOrder = 1;
+        else if(newInstructionOrder > queryCmdOutput.Count!) newInstructionOrder = queryCmdOutput.Count+1;
+        const newInstruction = new Instruction(
             recipeId,
             userId,
             eventBody.step,
-            maxOrder+1
+            newInstructionOrder
         );
-        console.log(instruction.toPutRequestItem());
-        const putItemCmdInput: PutItemCommandInput = {
-            TableName: recipeTableName,
-            Item: marshall(instruction.toPutRequestItem())
-        };
-        const putItemCmd = new PutItemCommand(putItemCmdInput);
-        await ddbClient.send(putItemCmd);
+        if (newInstruction.order > queryCmdOutput.Count) {
+            const putItemCmdInput: PutItemCommandInput = {
+                TableName: recipeTableName,
+                Item: marshall(newInstruction.toPutRequestItem())
+            };
+            const putItemCmd = new PutItemCommand(putItemCmdInput);
+            await ddbClient.send(putItemCmd);
+        } else {
+            const instructions = queryCmdOutput.Items!.map(item => {
+                return new Instruction(
+                    recipeId, 
+                    userId, 
+                    item["step"].toString(), 
+                    Number(item["order"]),
+                    item["itemId"].toString()
+                );
+            }).sort((a, b) => a.order - b.order);
+            const putItems = instructions.map((instruction, i) => {
+                if (instruction.order === newInstruction.order) {
+                    instructions[i].order += 1;
+                } else if(i > 0 && instructions[i-1] === newInstruction) {
+                    instructions[i].order += 1;
+                }
+                return {
+                    PutRequest: {
+                        Item: marshall(instructions[i].toPutRequestItem())
+                    }
+                };
+            });
+            const batchWriteInput: BatchWriteItemCommandInput = {
+                RequestItems: {
+                    [recipeTableName]: [
+                        ...putItems,
+                        {
+                            PutRequest: {
+                                Item: marshall(newInstruction.toPutRequestItem())
+                            }
+                        }
+                    ]
+                }
+            };
+            const batchWriteCmd = new BatchWriteItemCommand(batchWriteInput);
+            await ddbClient.send(batchWriteCmd);
+        }
         return {
             statusCode: 200,
             body: JSON.stringify({
-                instruction: instruction.toPutRequestItem()
+                instruction: newInstruction.toPutRequestItem()
             })
-        }
-        // const dbInstructions = queryCmdOutput.Items!.map(item => {
-        //     const unmarshalled = unmarshall(item) as IInstruction;
-        //     return {
-        //         PutRequest: {
-        //             Item: marshall(item)
-        //         }
-        //     }
-        // });
-        // const batchWriteCmdInput: BatchWriteItemCommandInput = {
-        //     RequestItems: {
-        //         [recipeTableName]: [
-        //             {
-        //                 PutRequest: {
-        //                     Item: marshall(event.body)
-        //                 }
-        //             }
-        //         ]
-        //     }
-        // }
+        };
     } catch (error) {
         console.error(error);
         console.error((error as Error).message)
