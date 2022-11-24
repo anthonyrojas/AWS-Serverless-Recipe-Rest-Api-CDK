@@ -4,14 +4,10 @@ import {
 } from 'aws-lambda';
 import {
     DynamoDBClient,
-    DeleteItemCommand,
     QueryCommand,
     BatchWriteItemCommand,
     BatchWriteItemCommandInput
 } from '@aws-sdk/client-dynamodb';
-import {
-    marshall
-} from '@aws-sdk/util-dynamodb'
 
 export async function handler(event: APIGatewayEvent, context: Context) {
     let httpStatus = 200;
@@ -21,6 +17,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
             throw new Error(`${event.httpMethod} HTTP method is not supported in ${context.functionName}`);
         }
         const recipeTableName: string = process.env.RECIPES_TABLE_NAME!;
+        const userId = event.requestContext.authorizer!.claims["cognito:username"];
         const ddbClient = new DynamoDBClient({
             region: 'us-west-2'
         });
@@ -39,9 +36,13 @@ export async function handler(event: APIGatewayEvent, context: Context) {
             ExpressionAttributeValues: {
                 ":id": {
                     S: id
+                },
+                ":userId": {
+                    S: userId
                 }
             },
-            KeyConditionExpression: "recipeId = :id"
+            KeyConditionExpression: "recipeId = :id",
+            FilterExpression: "userId=:userId"
         });
         const recipeItems = await ddbClient.send(queryItemCmd);
         const deleteItems = recipeItems.Items!.map(item => {
@@ -61,15 +62,6 @@ export async function handler(event: APIGatewayEvent, context: Context) {
         }
         const batchDeleteCmd = new BatchWriteItemCommand(batchWriteCmdInput);
         await ddbClient.send(batchDeleteCmd);
-        // const deleteItemCmd = new DeleteItemCommand({
-        //     TableName: recipeTableName,
-        //     Key: {
-        //         recipeId: {
-        //             S: id
-        //         }
-        //     }
-        // });
-        // await ddbClient.send(deleteItemCmd);
         return {
             statusCode: httpStatus, 
             body: JSON.stringify({

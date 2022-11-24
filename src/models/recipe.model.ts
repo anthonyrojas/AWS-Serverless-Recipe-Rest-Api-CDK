@@ -13,6 +13,7 @@ export interface IRecipe {
     prepTime: Number;
     ingredients?: IIngredient[];
     instructions?: IInstruction[];
+    imageUrls?: string[]
 }
 export class Recipe implements IRecipe {
     recipeId: string;
@@ -25,7 +26,8 @@ export class Recipe implements IRecipe {
     prepTime: Number;
     ingredients: Ingredient[];
     instructions: Instruction[];
-    constructor(userId: string, pName: string, pDescription: string, pCookTime: Number, pPrepTime: Number, pId?: string) {
+    imageUrls: string[]
+    constructor(userId: string, pName: string, pDescription: string, pCookTime: Number, pPrepTime: Number, pId?: string, pImageUrls?: string[]) {
         if (pId === undefined || pId === null) this.recipeId = uuid();
         else this.recipeId = pId;
         this.itemId = this.recipeId;
@@ -37,6 +39,8 @@ export class Recipe implements IRecipe {
         this.ingredients = [];
         this.instructions = [];
         this.entityType = ENTITY_TYPE;
+        if (pImageUrls) this.imageUrls = pImageUrls;
+        else this.imageUrls = [];
     }
     attachIIngredients(iIngredients: IIngredient[]) {
         this.ingredients = iIngredients.map(iIngredient => {
@@ -58,7 +62,8 @@ export class Recipe implements IRecipe {
             name: this.name,
             description: this.description,
             cookTime: this.cookTime,
-            prepTime: this.prepTime
+            prepTime: this.prepTime,
+            imageUrls: this.imageUrls
         }
     }
 }

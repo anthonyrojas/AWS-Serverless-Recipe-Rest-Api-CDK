@@ -19,6 +19,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
             throw new Error(`${event.httpMethod} HTTP method is not supported in ${context.functionName}`);
         }
         const recipeTableName = process.env.RECIPES_TABLE_NAME;
+        const userId = event.requestContext.authorizer!.claims["cognito:username"];
         const ddbClient = new DynamoDBClient({
             region: 'us-west-2'
         });
@@ -38,7 +39,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
                 ...requestBody,
                 id: id
             }),
-            ConditionExpression: "recipeId = :id and itemId = :itemId and etityType = :entityType",
+            ConditionExpression: "recipeId = :id and itemId = :itemId and etityType = :entityType AND userId=:userId",
             ExpressionAttributeValues: {
                 ":id": {
                     S: id
@@ -48,6 +49,9 @@ export async function handler(event: APIGatewayEvent, context: Context) {
                 },
                 ":entityType": {
                     S: "RECIPE"
+                },
+                ":userId": {
+                    S: userId
                 }
             }
         });

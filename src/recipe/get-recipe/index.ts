@@ -115,7 +115,8 @@ export async function handler (event: APIGatewayEvent, context: Context) {
                 recipeId: recipeItem.recipeId,
                 itemId: recipeItem.itemId,
                 userId: recipeItem.userId,
-                name: recipeItem.name
+                name: recipeItem.name,
+                imageUrls: recipeItem.imageUrls
             }
         }).splice(0, limit);
         return {

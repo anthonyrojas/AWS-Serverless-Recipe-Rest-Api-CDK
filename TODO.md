@@ -14,6 +14,7 @@ The following is a list of improvements that are pending implementation.
 - [X] Add Models for request body validations to API gateway
 - [ ] Add Ratings functionality to the API for users
 - [ ] Flesh out README
+- [ ] Add images a recipe
 - [X] Add a pipeline for code changes
 - [X] Separate stacks by business domain
     - [X] Lambda Stack

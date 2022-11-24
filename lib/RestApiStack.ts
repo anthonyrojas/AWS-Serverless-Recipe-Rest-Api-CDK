@@ -27,6 +27,8 @@ interface RestApiStackProps extends cdk.StackProps {
     readonly createInstructionLambda: NodejsFunction;
     readonly updateInstructionLambda: NodejsFunction;
     readonly deleteInstructionLambda: NodejsFunction;
+    readonly getRecipeImagePresignedUrlLambda: NodejsFunction;
+    readonly updateRecipeImageLambda: NodejsFunction;
     readonly userPool: UserPool;
 }
 
@@ -54,15 +56,7 @@ export class RestApiStack extends cdk.Stack {
                     'OPTIONS'
                 ]
             },
-            apiKeySourceType: ApiKeySourceType.HEADER,
-            // deployOptions: {
-            //     methodOptions: {
-            //         '/*': {
-            //             throttlingBurstLimit: 100,
-            //             throttlingRateLimit: 100
-            //         }
-            //     }
-            // }
+            apiKeySourceType: ApiKeySourceType.HEADER
         });
 
         const authorizer = new CognitoUserPoolsAuthorizer(this, 'RestApiCognitoAuthorizer', {
@@ -154,6 +148,17 @@ export class RestApiStack extends cdk.Stack {
             },
             authorizationType: AuthorizationType.COGNITO
         });
+
+        recipeIdResource
+        .addResource("imageUrl")
+        .addMethod("GET", new LambdaIntegration(props.getRecipeImagePresignedUrlLambda), {
+            requestParameters: {
+                "method.request.querystring.imageExt": true
+            },
+            apiKeyRequired: true,
+            authorizer: authorizer,
+            authorizationType: AuthorizationType.COGNITO
+        })
 
         recipeIdResource
         .addMethod('DELETE', new LambdaIntegration(props.deleteRecipeLambda), {
@@ -284,6 +289,10 @@ export class RestApiStack extends cdk.Stack {
                     },
                     prepTime: {
                         type: JsonSchemaType.INTEGER
+                    },
+                    imageUrls: {
+                        type: JsonSchemaType.ARRAY,
+                        minItems: 0
                     },
                     ingredients: {
                         type: JsonSchemaType.ARRAY,

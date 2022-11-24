@@ -5,9 +5,12 @@ import { Table } from 'aws-cdk-lib/aws-dynamodb';
 import { Runtime } from 'aws-cdk-lib/aws-lambda';
 import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 import * as path from 'path';
+import { Bucket, EventType } from 'aws-cdk-lib/aws-s3';
+import { S3EventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 
 interface LambdaStackProps extends cdk.StackProps {
     readonly RecipeTable: Table;
+    readonly RecipeImageBucket: Bucket;
 }
 
 export class LambdaStack extends cdk.Stack {
@@ -21,6 +24,8 @@ export class LambdaStack extends cdk.Stack {
     public readonly createInstructionLambda: NodejsFunction;
     public readonly updateInstructionLambda: NodejsFunction;
     public readonly deleteInstructionLambda: NodejsFunction;
+    public readonly getRecipeImagePresignedUrlLambda: NodejsFunction;
+    public readonly updateRecipeImageLambda: NodejsFunction;
     private readonly LAMBDA_RUNTIME = Runtime.NODEJS_16_X;
 
     constructor(scope: Construct, id: string, props: LambdaStackProps) {
@@ -32,6 +37,10 @@ export class LambdaStack extends cdk.Stack {
         this.updateRecipeLambda = recipeFunctions["update-recipe"];
         this.deleteRecipeLambda = recipeFunctions["delete-recipe"];
         this.getRecipeLambda = recipeFunctions["get-recipe"];
+
+        /* Recipe Image Lambdas */
+        this.getRecipeImagePresignedUrlLambda = recipeFunctions["get-recipe-image-presigned-url"]
+        this.updateRecipeImageLambda = recipeFunctions["update-recipe-image"];
 
         /* Ingredient Lambdas */
         const ingredientFunctions = this.addIngredientLambdas(props.RecipeTable);
@@ -88,6 +97,40 @@ export class LambdaStack extends cdk.Stack {
         });
         return functions;
       }
+      addRecipeImageLambndas(recipeImageBucket: Bucket, recipeTable: Table): Record<string, NodejsFunction> {
+        const functions: Record<string, NodejsFunction> = {};
+        const getRecipeImageUrl = new NodejsFunction(this, 'get-recipe-image-presigned-url', {
+          environment: {
+            RECIPE_BUCKET: recipeImageBucket.bucketName
+          },
+          memorySize: 128,
+          timeout: cdk.Duration.seconds(10),
+          description: "Lambda function to get a presigned URL to upload an image for a recipe",
+          runtime: this.LAMBDA_RUNTIME,
+          handler: 'handler',
+          entry: path.join(__dirname, `/../src/recipe/get-recipe-image-presigned-url/index.ts`),
+          logRetention: RetentionDays.ONE_WEEK
+        });
+        recipeImageBucket.grantReadWrite(getRecipeImageUrl);
+        const updateRecipeImage = new NodejsFunction(this, 'update-recipe-image', {
+          environment: {
+            RECIPES_TABLE_NAME: recipeTable.tableName
+          },
+          memorySize: 128,
+          timeout: cdk.Duration.seconds(10),
+          description: "Lambda function triggered on S3 upload for a new recipe image",
+          runtime: this.LAMBDA_RUNTIME,
+          handler: 'handler',
+          entry: path.join(__dirname, `/../src/recipe/update-recipe-image/index.ts`),
+        });
+        recipeTable.grantReadWriteData(updateRecipeImage);
+        updateRecipeImage.addEventSource(new S3EventSource(recipeImageBucket, {
+          events: [EventType.OBJECT_CREATED]
+        }));
+        functions["get-recipe-image-presigned-url"] = getRecipeImageUrl;
+        functions["update-recipe-image"] = updateRecipeImage;
+        return functions;
+      }
       addIngredientLambdas(recipesTable: Table): Record<string, NodejsFunction> {
         const functionSpecs = [
           {
@@ -121,6 +164,7 @@ export class LambdaStack extends cdk.Stack {
             logRetention: RetentionDays.ONE_WEEK
           });
           functions[functionSpec.name] = lambda;
+          recipesTable.grantReadWriteData(lambda);
         });
         return functions;
       }
@@ -157,6 +201,7 @@ export class LambdaStack extends cdk.Stack {
             logRetention: RetentionDays.ONE_WEEK
           });
           functions[functionSpec.name] = lambda;
+          recipesTable.grantReadWriteData(lambda);
         });
         return functions;
       }
