@@ -4,7 +4,6 @@ import { LambdaStack } from './LambdaStack';
 import { AuthStack } from './AuthStack';
 import { RestApiStack } from './RestApiStack';
 import { DatabaseStack } from './DatabaseStack';
-import { StorageStack } from './StorageStack';
 
 export class ServerlessRecipeApiPipelineStage extends cdk.Stage {
     private readonly SERVERLESS_RECIPE_API_PREFIX = `ServerlessRecipeApi`;
@@ -16,19 +15,12 @@ export class ServerlessRecipeApiPipelineStage extends cdk.Stage {
               region: this.REGION
             }
           });
-
-          const storageStack = new StorageStack(this, `${this.SERVERLESS_RECIPE_API_PREFIX}StorageStack`, {
-            env: {
-              region: this.REGION
-            }
-          })
           
           const lambdaStack = new LambdaStack(this, `${this.SERVERLESS_RECIPE_API_PREFIX}LambdaStack`, {
             env: {
               region: this.REGION
             },
-            RecipeTable: databaseStack.RecipesTable,
-            RecipeImageBucket: storageStack.recipeImageBucket
+            RecipeTable: databaseStack.RecipesTable
           });
           
           const authStack = new AuthStack(this, `${this.SERVERLESS_RECIPE_API_PREFIX}AuthStack`, {

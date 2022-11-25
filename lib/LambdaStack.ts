@@ -5,12 +5,11 @@ import { Table } from 'aws-cdk-lib/aws-dynamodb';
 import { Runtime } from 'aws-cdk-lib/aws-lambda';
 import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 import * as path from 'path';
-import { Bucket, EventType } from 'aws-cdk-lib/aws-s3';
+import { Bucket, EventType, BucketEncryption } from 'aws-cdk-lib/aws-s3';
 import { S3EventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 
 interface LambdaStackProps extends cdk.StackProps {
-    readonly RecipeTable: Table;
-    readonly RecipeImageBucket: Bucket;
+  readonly RecipeTable: Table;
 }
 
 export class LambdaStack extends cdk.Stack {
@@ -31,6 +30,13 @@ export class LambdaStack extends cdk.Stack {
     constructor(scope: Construct, id: string, props: LambdaStackProps) {
         super(scope, id, props);
 
+        /* Bucket to store images for recipes */
+      const recipeImageBucket = new Bucket(this, 'RecipeImagesBucket', {
+        publicReadAccess: true,
+        bucketKeyEnabled: true,
+        encryption: BucketEncryption.KMS
+      });
+
         /* Recipe Lambdas */
         const recipeFunctions = this.addRecipeLambdas(props.RecipeTable);
         this.createRecipeLambda = recipeFunctions["create-recipe"];
@@ -39,8 +45,9 @@ export class LambdaStack extends cdk.Stack {
         this.getRecipeLambda = recipeFunctions["get-recipe"];
 
         /* Recipe Image Lambdas */
-        this.getRecipeImagePresignedUrlLambda = recipeFunctions["get-recipe-image-presigned-url"]
-        this.updateRecipeImageLambda = recipeFunctions["update-recipe-image"];
+        const recipeImageFunctions = this.addRecipeImageLambndas(recipeImageBucket, props.RecipeTable);
+        this.getRecipeImagePresignedUrlLambda = recipeImageFunctions["get-recipe-image-presigned-url"]
+        this.updateRecipeImageLambda = recipeImageFunctions["update-recipe-image"];
 
         /* Ingredient Lambdas */
         const ingredientFunctions = this.addIngredientLambdas(props.RecipeTable);
