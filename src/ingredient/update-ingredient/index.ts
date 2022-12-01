@@ -4,11 +4,11 @@ import {
 } from 'aws-lambda';
 import { marshall } from '@aws-sdk/util-dynamodb';
 import {
-    DynamoDBClient,
     PutItemCommand,
     PutItemCommandInput
 } from '@aws-sdk/client-dynamodb';
 import { IIngredient, Ingredient } from '../../models/ingredient.model';
+import { ddbClient } from '../../utils/DynamoDBClient';
 
 export async function handler(event: APIGatewayEvent, context: Context) {
     let httpStatus = 200;
@@ -27,9 +27,6 @@ export async function handler(event: APIGatewayEvent, context: Context) {
         const recipeTableName = process.env.RECIPES_TABLE_NAME;
 
         const requestBody: IIngredient = JSON.parse(event.body!);
-        const ddbClient = new DynamoDBClient({
-            region: 'us-west-2'
-        });
         const ingredient: Ingredient = new Ingredient(
             recipeId,
             requestBody.name,
@@ -58,6 +55,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
         };
         const putItemCmd = new PutItemCommand(putItemCmdInput);
         await ddbClient.send(putItemCmd);
+        ddbClient.destroy();
         return {
             statusCode: 200,
             body: JSON.stringify({

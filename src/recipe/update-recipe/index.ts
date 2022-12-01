@@ -3,13 +3,13 @@ import {
     Context
 } from 'aws-lambda';
 import {
-    DynamoDBClient,
     PutItemCommand,
 } from '@aws-sdk/client-dynamodb';
 import {
     marshall
 } from '@aws-sdk/util-dynamodb';
 import { IRecipe } from "../../models/recipe.model";
+import { ddbClient } from '../../utils/DynamoDBClient';
 
 export async function handler(event: APIGatewayEvent, context: Context) {
     let httpStatus = 200;
@@ -19,20 +19,17 @@ export async function handler(event: APIGatewayEvent, context: Context) {
             throw new Error(`${event.httpMethod} HTTP method is not supported in ${context.functionName}`);
         }
         const recipeTableName = process.env.RECIPES_TABLE_NAME;
-        const userId = event.requestContext.authorizer!.claims["cognito:username"];
-        const ddbClient = new DynamoDBClient({
-            region: 'us-west-2'
-        });
-        if(event.pathParameters === null || event.pathParameters["recipeId"] === undefined || event.pathParameters["recipeId"] === null || event.pathParameters["recipeId"] === "") {
+        if (!event.requestContext || !event.requestContext.authorizer || !event.requestContext.authorizer.claims["cognito:username"]) {
+            httpStatus = 403;
+            throw new Error(`Missing authentication token. Failed to create recipe`);
+        }
+        const userId = event.requestContext.authorizer.claims["cognito:username"];
+        if(event.pathParameters === null || !event.pathParameters["recipeId"]|| event.pathParameters["recipeId"] === null || event.pathParameters["recipeId"] === "") {
             httpStatus = 400;
             throw new Error("Failed to specify a recipe id. Unable to update any recipe.");
         }
-        if(event.body === null) {
-            httpStatus = 400;
-            throw new Error('Missing fields to update.');
-        }
         const id: string = event.pathParameters["recipeId"];
-        const requestBody: IRecipe = JSON.parse(event.body);
+        const requestBody: IRecipe = JSON.parse(event.body!);
         const putItemCmd = new PutItemCommand({
             TableName: recipeTableName,
             Item: marshall({
@@ -56,6 +53,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
             }
         });
         await ddbClient.send(putItemCmd);
+        ddbClient.destroy();
         return {
             statusCode: 200,
             body: JSON.stringify({

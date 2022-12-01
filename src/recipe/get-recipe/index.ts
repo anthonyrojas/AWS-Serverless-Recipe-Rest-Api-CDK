@@ -3,7 +3,6 @@ import {
     Context
 } from 'aws-lambda';
 import {
-    DynamoDBClient,
     ScanCommand,
     QueryCommand,
     QueryCommandInput,
@@ -15,6 +14,7 @@ import {
 import {IRecipe} from "../../models/recipe.model";
 import {IIngredient} from "../../models/ingredient.model";
 import {IInstruction} from "../../models/instruction.model";
+import {ddbClient} from '../../utils/DynamoDBClient';
 
 function unmarshallQueryCmdOutput(outputItems: QueryCommandOutput) {
     if (outputItems.Count === undefined || outputItems.Count === 0 || outputItems.Items === undefined) return [];
@@ -52,10 +52,7 @@ export async function handler (event: APIGatewayEvent, context: Context) {
             throw new Error(`${event.httpMethod} HTTP method is not supported in ${context.functionName}`);
         }
         const recipeTableName = process.env.RECIPES_TABLE_NAME!;
-        const ddbClient = new DynamoDBClient({
-            region: 'us-west-2'
-        });
-        if(event.pathParameters !== null && event.pathParameters["recipeId"] !== undefined && event.pathParameters["recipeId"] !== null) {
+        if(event.pathParameters !== undefined && event.pathParameters !== null && event.pathParameters["recipeId"] !== undefined && event.pathParameters["recipeId"] !== undefined) {
             //get one recipe by recipeId
             const id: string = event.pathParameters["recipeId"];
             const recipeQueryCmdInput: QueryCommandInput = {
@@ -83,7 +80,7 @@ export async function handler (event: APIGatewayEvent, context: Context) {
                 }
             }
             const recipe = transformQueryCmdOutputToRecipe(recipeItemsUnmarshalled);
-
+            ddbClient.destroy();
             return {
                 statusCode: 200,
                 body: JSON.stringify({
@@ -94,7 +91,7 @@ export async function handler (event: APIGatewayEvent, context: Context) {
         //get all recipes with names and id only
         let limit = 20;
         const queryParams = event.queryStringParameters;
-        if(queryParams !== undefined && queryParams !== null) {
+        if(queryParams !== undefined && queryParams !== null && queryParams["limit"]) {
             limit = Number(queryParams["limit"]) || 20;
         }
         const scanCmd = new ScanCommand({
@@ -119,10 +116,11 @@ export async function handler (event: APIGatewayEvent, context: Context) {
                 imageUrls: recipeItem.imageUrls
             }
         }).splice(0, limit);
+        ddbClient.destroy();
         return {
             statusCode: 200,
             body: JSON.stringify({
-                recipes: unmarshalledItems,
+                recipes: unmarshalledItems ? unmarshalledItems : [],
                 count: data.Count,
                 lastEvaluatedKey: !data.LastEvaluatedKey ? undefined : unmarshall(data.LastEvaluatedKey)
             })

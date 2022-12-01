@@ -7,14 +7,13 @@ import {
     QueryCommandInput,
     QueryCommandOutput,
     BatchWriteItemCommandInput,
-    BatchWriteItemCommandOutput,
     BatchWriteItemCommand,
     PutItemCommandInput,
     PutItemCommand,
-    DynamoDBClient
 } from '@aws-sdk/client-dynamodb';
-import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
+import { marshall } from '@aws-sdk/util-dynamodb';
 import { IInstruction, Instruction } from '../../models/instruction.model';
+import { ddbClient } from '../../utils/DynamoDBClient';
 export async function handler(event: APIGatewayEvent, context: Context) {
     let statusCode = 200;
     try {
@@ -23,9 +22,6 @@ export async function handler(event: APIGatewayEvent, context: Context) {
             throw new Error(`${event.httpMethod} HTTP method is not supported in ${context.functionName}`);
         }
         const recipeTableName: string = process.env.RECIPES_TABLE_NAME!;
-        const ddbClient = new DynamoDBClient({
-            region: 'us-west-2'
-        });
         if (event.pathParameters === null || event.pathParameters["recipeId"] === undefined || event.pathParameters["recipeId"].trim() === "" || event.body === undefined || event.body === null) {
             statusCode = 400;
             throw new Error('Request is missing parameters or body.');
@@ -128,6 +124,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
             const batchWriteCmd = new BatchWriteItemCommand(batchWriteInput);
             await ddbClient.send(batchWriteCmd);
         }
+        ddbClient.destroy();
         return {
             statusCode: 200,
             body: JSON.stringify({

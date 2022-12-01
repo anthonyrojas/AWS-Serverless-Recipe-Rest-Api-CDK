@@ -4,10 +4,10 @@ import {
 } from 'aws-lambda';
 import { marshall } from "@aws-sdk/util-dynamodb";
 import {
-    DynamoDBClient,
     DeleteItemCommand,
     DeleteItemCommandInput
 } from "@aws-sdk/client-dynamodb";
+import { ddbClient } from '../../utils/DynamoDBClient';
 
 export async function handler(event: APIGatewayEvent, context: Context) {
     let httpStatus = 200;
@@ -21,9 +21,6 @@ export async function handler(event: APIGatewayEvent, context: Context) {
             throw new Error('Parameters are missing from the request.');
         }
         const recipeTableName = process.env.RECIPES_TABLE_NAME;
-        const ddbClient = new DynamoDBClient({
-            region: 'us-west-2'
-        });
         const recipeId: string = event.pathParameters["recipeId"]!;
         const ingredientId: string = event.pathParameters["ingredientId"]!;
         const userId = event.requestContext.authorizer!.claims["cognito:username"];
@@ -48,6 +45,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
         };
         const deleteCmd = new DeleteItemCommand(deleteCmdInput);
         await ddbClient.send(deleteCmd);
+        ddbClient.destroy();
         return {
             statusCode: httpStatus,
             body: JSON.stringify({

@@ -3,7 +3,6 @@ import {
     Context
 } from 'aws-lambda';
 import {
-    DynamoDBClient,
     PutItemCommand,
     PutItemCommandInput,
     BatchExecuteStatementCommand
@@ -12,6 +11,7 @@ import {
     marshall
 } from '@aws-sdk/util-dynamodb';
 import { IInstruction } from '../../models/instruction.model';
+import {ddbClient} from '../../utils/DynamoDBClient';
 
 interface IInstructionOrder {
     itemId: string;
@@ -32,9 +32,6 @@ export async function handler(event: APIGatewayEvent, context: Context) {
             throw new Error("Missing parameters for a valid request.");
         }
         const recipeId: string = event.pathParameters!["recipeId"]!;
-        const ddbClient = new DynamoDBClient({
-            region: 'us-west-2'
-        });
         if (event.pathParameters["instructionId"] === undefined || event.pathParameters["instructionId"] === null) {
             //mass update instruction orders
             const eventBody = JSON.parse(event.body!);
@@ -82,6 +79,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
         };
         const putItemCmd = new PutItemCommand(putItemCmdInput);
         await ddbClient.send(putItemCmd);
+        ddbClient.destroy();
         return {
             statusCode: 200, 
             body: JSON.stringify(eventBody)

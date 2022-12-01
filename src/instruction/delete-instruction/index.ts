@@ -3,10 +3,11 @@ import {
     Context
 } from 'aws-lambda';
 import {
-    DynamoDBClient,
     DeleteItemCommand,
     DeleteItemCommandInput
 } from '@aws-sdk/client-dynamodb';
+import { ddbClient } from '../../utils/DynamoDBClient';
+
 export async function handler(event: APIGatewayEvent, context: Context) {
     let statusCode = 200;
     try {
@@ -19,9 +20,6 @@ export async function handler(event: APIGatewayEvent, context: Context) {
             statusCode = 400;
             throw new Error("Missing parameters for a valid request.");
         }
-        const ddbClient = new DynamoDBClient({
-            region: 'us-west-2'
-        });
         const userId = event.requestContext.authorizer!.claims["cognito:username"];
         const instructionId = event.pathParameters["instructionId"];
         const recipeId = event.pathParameters["recipeId"];
@@ -47,6 +45,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
         };
         const deleteItemCmd = new DeleteItemCommand(deleteItemCmdInput);
         await ddbClient.send(deleteItemCmd);
+        ddbClient.destroy();
         return {
             statusCode: 200,
             body: JSON.stringify({

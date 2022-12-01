@@ -3,11 +3,11 @@ import {
     Context
 } from 'aws-lambda';
 import {
-    DynamoDBClient,
     QueryCommand,
     BatchWriteItemCommand,
     BatchWriteItemCommandInput
 } from '@aws-sdk/client-dynamodb';
+import { ddbClient } from '../../utils/DynamoDBClient';
 
 export async function handler(event: APIGatewayEvent, context: Context) {
     let httpStatus = 200;
@@ -17,19 +17,16 @@ export async function handler(event: APIGatewayEvent, context: Context) {
             throw new Error(`${event.httpMethod} HTTP method is not supported in ${context.functionName}`);
         }
         const recipeTableName: string = process.env.RECIPES_TABLE_NAME!;
-        const userId = event.requestContext.authorizer!.claims["cognito:username"];
-        const ddbClient = new DynamoDBClient({
-            region: 'us-west-2'
-        });
-        if(event.pathParameters === null || event.pathParameters["recipeId"] === undefined || event.pathParameters["recipeId"] === null) {
-            httpStatus = 400;
-            throw new Error("Failed to specify a recipe id. Unable to delete any recipe.");
+        if (!event.requestContext.authorizer || event.requestContext.authorizer === null || event.requestContext.authorizer.claims === null) {
+            httpStatus = 403;
+            throw new Error(`Missing authentication token. Failed to create recipe`);
         }
-        const id: string = event.pathParameters["recipeId"]!;
-        if(id === "") {
+        const userId = event.requestContext.authorizer!.claims["cognito:username"];
+        if(event.pathParameters === null || event.pathParameters["recipeId"] === undefined || event.pathParameters["recipeId"] === null) {
             httpStatus = 404;
             throw new Error("Failed to specify a recipe id. Unable to delete any recipe.");
         }
+        const id: string = event.pathParameters["recipeId"]!;
         //query recipe and related items
         const queryItemCmd = new QueryCommand({
             TableName: recipeTableName,
@@ -45,6 +42,10 @@ export async function handler(event: APIGatewayEvent, context: Context) {
             FilterExpression: "userId=:userId"
         });
         const recipeItems = await ddbClient.send(queryItemCmd);
+        if (!recipeItems.Count || !recipeItems.Items || recipeItems.Count! === 0) {
+            httpStatus = 404;
+            throw new Error(`Failed to find an recipes with recipe id ${id}. Unable to delete any recipe.`);
+        }
         const deleteItems = recipeItems.Items!.map(item => {
             return {
                 DeleteRequest: {
@@ -62,6 +63,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
         }
         const batchDeleteCmd = new BatchWriteItemCommand(batchWriteCmdInput);
         await ddbClient.send(batchDeleteCmd);
+        ddbClient.destroy();
         return {
             statusCode: httpStatus, 
             body: JSON.stringify({
@@ -70,6 +72,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
         }
     } catch (error) {
         const e = error as Error;
+        console.log(httpStatus)
         return {
             statusCode: httpStatus < 400 ? 400 : httpStatus,
             body: JSON.stringify({

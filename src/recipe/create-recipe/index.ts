@@ -3,7 +3,6 @@ import {
     Context
 } from 'aws-lambda';
 import {
-    DynamoDBClient,
     BatchWriteItemCommand,
     BatchWriteItemCommandInput
 } from '@aws-sdk/client-dynamodb';
@@ -11,13 +10,13 @@ import {
     marshall
 } from '@aws-sdk/util-dynamodb'
 import {Recipe, IRecipe} from "../../models/recipe.model";
+import { ddbClient } from '../../utils/DynamoDBClient';
 
 export async function handler (event: APIGatewayEvent, context: Context) {
     let statusCode = 200;
     try{
-        //const userId = event.requestContext.authorizer;
-        console.log(JSON.stringify(event.requestContext));
         if(event.httpMethod !== 'POST') {
+            statusCode = 405;
             throw new Error(`${event.httpMethod} HTTP method is not supported in ${context.functionName}`)
         }
         if (event.requestContext.authorizer === undefined || event.requestContext.authorizer === null) {
@@ -26,10 +25,8 @@ export async function handler (event: APIGatewayEvent, context: Context) {
         }
         const userId = event.requestContext.authorizer.claims["cognito:username"]
         const recipeTableName = process.env.RECIPES_TABLE_NAME!;
-        const ddbClient = new DynamoDBClient({
-            region: 'us-west-2'
-        });
         if(event.body === null) {
+            statusCode = 400;
             throw new Error("Missing request body.")
         }
         const requestBody: IRecipe = JSON.parse(event.body);
@@ -67,6 +64,7 @@ export async function handler (event: APIGatewayEvent, context: Context) {
         };
         const batchWriteCmd = new BatchWriteItemCommand(batchWriteCmdInput)
         await ddbClient.send(batchWriteCmd);
+        ddbClient.destroy();
         return {
             statusCode: 200,
             body: JSON.stringify({

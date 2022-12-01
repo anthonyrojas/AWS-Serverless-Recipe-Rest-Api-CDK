@@ -5,7 +5,7 @@ import { Table } from 'aws-cdk-lib/aws-dynamodb';
 import { Runtime } from 'aws-cdk-lib/aws-lambda';
 import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 import * as path from 'path';
-import { Bucket, EventType, BucketEncryption } from 'aws-cdk-lib/aws-s3';
+import { Bucket, EventType, BucketEncryption, BucketAccessControl } from 'aws-cdk-lib/aws-s3';
 import { S3EventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 
 interface LambdaStackProps extends cdk.StackProps {
@@ -34,7 +34,8 @@ export class LambdaStack extends cdk.Stack {
       const recipeImageBucket = new Bucket(this, 'RecipeImagesBucket', {
         publicReadAccess: true,
         bucketKeyEnabled: true,
-        encryption: BucketEncryption.KMS
+        encryption: BucketEncryption.KMS,
+        accessControl: BucketAccessControl.PUBLIC_READ
       });
 
         /* Recipe Lambdas */
@@ -45,7 +46,7 @@ export class LambdaStack extends cdk.Stack {
         this.getRecipeLambda = recipeFunctions["get-recipe"];
 
         /* Recipe Image Lambdas */
-        const recipeImageFunctions = this.addRecipeImageLambndas(recipeImageBucket, props.RecipeTable);
+        const recipeImageFunctions = this.addRecipeImageLambdas(recipeImageBucket, props.RecipeTable);
         this.getRecipeImagePresignedUrlLambda = recipeImageFunctions["get-recipe-image-presigned-url"]
         this.updateRecipeImageLambda = recipeImageFunctions["update-recipe-image"];
 
@@ -104,7 +105,7 @@ export class LambdaStack extends cdk.Stack {
         });
         return functions;
       }
-      addRecipeImageLambndas(recipeImageBucket: Bucket, recipeTable: Table): Record<string, NodejsFunction> {
+      addRecipeImageLambdas(recipeImageBucket: Bucket, recipeTable: Table): Record<string, NodejsFunction> {
         const functions: Record<string, NodejsFunction> = {};
         const getRecipeImageUrl = new NodejsFunction(this, 'get-recipe-image-presigned-url', {
           environment: {
@@ -118,10 +119,11 @@ export class LambdaStack extends cdk.Stack {
           entry: path.join(__dirname, `/../src/recipe/get-recipe-image-presigned-url/index.ts`),
           logRetention: RetentionDays.ONE_WEEK
         });
-        recipeImageBucket.grantReadWrite(getRecipeImageUrl);
+        recipeImageBucket.grantRead(getRecipeImageUrl);
         const updateRecipeImage = new NodejsFunction(this, 'update-recipe-image', {
           environment: {
-            RECIPES_TABLE_NAME: recipeTable.tableName
+            RECIPES_TABLE_NAME: recipeTable.tableName,
+            RECIPE_IMAGE_BUCKET_DOMAIN_NAME: recipeImageBucket.bucketDomainName
           },
           memorySize: 128,
           timeout: cdk.Duration.seconds(10),
@@ -132,7 +134,7 @@ export class LambdaStack extends cdk.Stack {
         });
         recipeTable.grantReadWriteData(updateRecipeImage);
         updateRecipeImage.addEventSource(new S3EventSource(recipeImageBucket, {
-          events: [EventType.OBJECT_CREATED]
+          events: [EventType.OBJECT_CREATED_PUT]
         }));
         functions["get-recipe-image-presigned-url"] = getRecipeImageUrl;
         functions["update-recipe-image"] = updateRecipeImage;

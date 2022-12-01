@@ -26,7 +26,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
             client, 
             command, 
             {
-                expiresIn: 120
+                expiresIn: 120 //2 minutes
             }
         );
         return {

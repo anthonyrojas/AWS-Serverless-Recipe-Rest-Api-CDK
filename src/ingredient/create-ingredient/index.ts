@@ -5,9 +5,9 @@ import {
 import { IIngredient, Ingredient } from '../../models/ingredient.model';
 import { marshall } from '@aws-sdk/util-dynamodb';
 import {
-    DynamoDBClient,
     PutItemCommand
 } from '@aws-sdk/client-dynamodb';
+import { ddbClient } from '../../utils/DynamoDBClient';
 
 export async function handler(event: APIGatewayEvent, context: Context) {
     let httpStatus = 200;
@@ -21,9 +21,6 @@ export async function handler(event: APIGatewayEvent, context: Context) {
             throw new Error('Recipe ID is missing from request.');
         }
         const recipeTableName = process.env.RECIPES_TABLE_NAME;
-        const ddbClient = new DynamoDBClient({
-            region: 'us-west-2'
-        });
         const recipeId: string = event.pathParameters["recipeId"]!;
         const userId = event.requestContext.authorizer!.claims["cognito:username"];
 
@@ -53,6 +50,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
             // }
         });
         await ddbClient.send(putItemCmd);
+        ddbClient.destroy();
         return {
             statusCode: 200,
             body: JSON.stringify({
