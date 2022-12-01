@@ -17,7 +17,7 @@ export class PipelineStack extends cdk.Stack {
                     authentication: SecretValue.secretsManager("serverless-recipe-app-github-token")
                 }),
                 commands: [
-                    "npm install",
+                    //"npm install",
                     'npm ci',
                     'npm run test',
                     'npm run build',
