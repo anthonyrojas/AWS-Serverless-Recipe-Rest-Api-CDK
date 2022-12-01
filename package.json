@@ -4,6 +4,10 @@
   "bin": {
     "serverless-rest-api": "bin/serverless-rest-api.js"
   },
+  "engines" : { 
+    "npm" : ">=8.0.0 <9.0.0",
+    "node" : ">=16.0.0 <17.0.0"
+  },
   "scripts": {
     "build": "tsc",
     "watch": "tsc -w",

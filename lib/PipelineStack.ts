@@ -23,10 +23,10 @@ export class PipelineStack extends cdk.Stack {
                     'npm run build',
                     'npx cdk synth'
                 ],
-                primaryOutputDirectory: 'cdk.out'
-            }), 
+                primaryOutputDirectory: 'cdk.out',
+            }),
             dockerEnabledForSynth: true,
-            dockerEnabledForSelfMutation: true
+            dockerEnabledForSelfMutation: true,
         });
 
         pipeline.addStage(new ServerlessRecipeApiPipelineStage(this, 'ProdStage', {
