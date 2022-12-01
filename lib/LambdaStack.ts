@@ -35,7 +35,7 @@ export class LambdaStack extends cdk.Stack {
         publicReadAccess: true,
         bucketKeyEnabled: true,
         encryption: BucketEncryption.KMS,
-        accessControl: BucketAccessControl.PUBLIC_READ
+        accessControl: BucketAccessControl.PUBLIC_READ,
       });
 
         /* Recipe Lambdas */
@@ -119,7 +119,7 @@ export class LambdaStack extends cdk.Stack {
           entry: path.join(__dirname, `/../src/recipe/get-recipe-image-presigned-url/index.ts`),
           logRetention: RetentionDays.ONE_WEEK
         });
-        recipeImageBucket.grantRead(getRecipeImageUrl);
+        recipeImageBucket.grantReadWrite(getRecipeImageUrl);
         const updateRecipeImage = new NodejsFunction(this, 'update-recipe-image', {
           environment: {
             RECIPES_TABLE_NAME: recipeTable.tableName,

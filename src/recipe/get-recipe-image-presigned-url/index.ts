@@ -20,7 +20,9 @@ export async function handler(event: APIGatewayEvent, context: Context) {
         const key = uuid().replace("-", "");
         const command = new PutObjectCommand({
             Bucket: process.env.RECIPE_BUCKET!,
-            Key: `${event.pathParameters!["recipeId"]}/${key}.${imageExt}`
+            Key: `${event.pathParameters!["recipeId"]}/${key}.${imageExt}`,
+            ACL: "public-read"
+            
         })
         const signedUrl = await getSignedUrl(
             client, 
