@@ -43,12 +43,13 @@ export async function handler(event: APIGatewayEvent, context: Context) {
                 filename: `${key}.${imageExt}`
             })
         };
-    } catch (error) {
-        console.error((error as Error).message);
+    } catch (e) {
+        const error = e as Error;
+        console.error(error.message);
         return {
             statusCode: statusCode < 400 ? 400 : statusCode,
             body: JSON.stringify({
-                message: (error as Error).message
+                message: error.message
             })
         }
     }
