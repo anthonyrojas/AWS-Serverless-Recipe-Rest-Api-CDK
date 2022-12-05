@@ -7,16 +7,15 @@ import {
 } from './__mocks__/getRecipeImagePresignedUrl.mock';
 
 describe("execute getRecipeImagePresignedUrl lambda function", () => {
-    
+    jest.mock("../../../src/recipe/get-recipe-image-presigned-url/index", async () => ({
+        getSignedUrl: jest.fn().mockResolvedValue(mockResolvedValueSuccess)
+    }));
     afterEach((done) => {
         jest.clearAllMocks();
         jest.resetAllMocks();
         done();
     });
     it("should return presigned url", async () => {
-        jest.mock("../../../src/recipe/get-recipe-image-presigned-url/index", async () => ({
-            getSignedUrl: jest.fn().mockResolvedValueOnce(mockResolvedValueSuccess)
-        }));
         process.env.RECIPE_BUCKET = "somesamplebucket";
         const res = await handler(mockValidEvent, mockContext);
         expect(res.statusCode).toEqual(200);
