@@ -31,6 +31,11 @@ export async function handler(event: APIGatewayEvent, context: Context) {
                 expiresIn: 120 //2 minutes
             }
         );
+        const url = new URL(signedUrl);
+        if (url.protocol !== "https") {
+            statusCode = 400;
+            throw new Error("Failed to create a valid pre-signed URL");
+        }
         return {
             statusCode: 200,
             body: JSON.stringify({
