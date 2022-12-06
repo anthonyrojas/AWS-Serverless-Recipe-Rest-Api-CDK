@@ -17,9 +17,13 @@ export async function handler(event: APIGatewayEvent, context: Context) {
             httpStatus = 405;
             throw new Error(`${event.httpMethod} HTTP method is not supported in ${context.functionName}`);
         }
-        if (event.pathParameters === null || event.pathParameters["recipeId"] === undefined && event.pathParameters["ingredientId"]) {
-            httpStatus = 400;
+        if (!event.pathParameters || event.pathParameters === null || !event.pathParameters["recipeId"] || !event.pathParameters["ingredientId"]) {
+            httpStatus = 404;
             throw new Error('Parameters are missing from the request.');
+        }
+        if (!event.requestContext || !event.requestContext.authorizer || !event.requestContext.authorizer.claims["cognito:username"]) {
+            httpStatus = 403;
+            throw new Error("Unauthorized!");
         }
         const recipeId: string = event.pathParameters["recipeId"]!;
         const ingredientId: string = event.pathParameters["ingredientId"]!;
@@ -40,7 +44,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
             Item: marshall({
                 ...ingredient.toPutRequestItem()
             }),
-            ConditionExpression: 'recipeId=:recipeId AND userId=:userId AND itemId=:itemId',
+            ConditionExpression: 'recipeId=:recipeId AND userId=:userId AND attribute_exists(:itemId)',
             ExpressionAttributeValues: {
                 ":recipeId": {
                     S: recipeId
@@ -64,7 +68,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
         };
     } catch (error) {
         return {
-            statusCode: httpStatus,
+            statusCode: httpStatus < 400 ? 400 : httpStatus,
             body: JSON.stringify({
                 message: (error as Error).message
             })

@@ -19,8 +19,8 @@ export class DatabaseStack extends cdk.Stack {
                 name: "itemId", //will contain userId and unique id of ingredient and instructions
                 type: AttributeType.STRING
             },
-            readCapacity: 10,
-            writeCapacity: 10
+            readCapacity: 100,
+            writeCapacity: 100
         });
         recipesTable.addGlobalSecondaryIndex({
             indexName: "UserItemIndex",
@@ -33,6 +33,17 @@ export class DatabaseStack extends cdk.Stack {
                 type: AttributeType.STRING
             }
         });
+        recipesTable.addGlobalSecondaryIndex({
+            indexName: "EntityTypeItemIndex", //to be used by GET /recipe for a primitive search
+            partitionKey: {
+                name: "entityType",
+                type: AttributeType.STRING
+            },
+            sortKey: {
+                name: "itemId",
+                type: AttributeType.STRING
+            }
+        })
         this.RecipesTable = recipesTable;
     }
 }

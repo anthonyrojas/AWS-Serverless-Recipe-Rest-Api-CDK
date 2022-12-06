@@ -16,9 +16,13 @@ export async function handler(event: APIGatewayEvent, context: Context) {
             httpStatus = 405;
             throw new Error(`${event.httpMethod} HTTP method is not supported in ${context.functionName}`);
         }
-        if (event.pathParameters === null || event.pathParameters["recipeId"] === undefined && event.pathParameters["recipeId"] === null) {
-            httpStatus = 400;
+        if (!event.pathParameters || event.pathParameters === null || !event.pathParameters["recipeId"] || event.pathParameters["recipeId"] === null) {
+            httpStatus = 404;
             throw new Error('Recipe ID is missing from request.');
+        }
+        if (!event.requestContext.authorizer || event.requestContext.authorizer === null || !event.requestContext.authorizer.claims["cognito:username"]) {
+            httpStatus = 403;
+            throw new Error("Unauthenticated!");
         }
         const recipeTableName = process.env.RECIPES_TABLE_NAME;
         const recipeId: string = event.pathParameters["recipeId"]!;
@@ -38,16 +42,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
             Item: marshall({
                 ...ingredient.toPutRequestItem()
             }),
-            ConditionExpression: 'attribute_exists(recipeId) AND attribute_exists(userId)',
-            // ConditionExpression: 'attribute_exists(:recipeId) and attribute_exists(:userId)',
-            // ExpressionAttributeValues: {
-            //     ":recipeId": {
-            //         S: recipeId
-            //     },
-            //     ":itemId": {
-            //         S: userId
-            //     }
-            // }
+            ConditionExpression: 'attribute_exists(recipeId) AND attribute_exists(userId)'
         });
         await ddbClient.send(putItemCmd);
         ddbClient.destroy();
@@ -58,8 +53,9 @@ export async function handler(event: APIGatewayEvent, context: Context) {
             })
         }
     } catch (error) {
+        console.error((error as Error).message);
         return {
-            statusCode: httpStatus,
+            statusCode: httpStatus < 400 ? 400 : httpStatus,
             body: JSON.stringify({
                 message: (error as Error).message
             })

@@ -16,9 +16,13 @@ export async function handler(event: APIGatewayEvent, context: Context) {
             httpStatus = 405;
             throw new Error(`${event.httpMethod} HTTP method is not supported in ${context.functionName}`);
         }
-        if (event.pathParameters === null || event.pathParameters["recipeId"] === undefined || event.pathParameters["recipeId"] === undefined) {
-            httpStatus = 400;
+        if (event.pathParameters === null || !event.pathParameters["recipeId"] || !event.pathParameters["ingredientId"] ) {
+            httpStatus = 404;
             throw new Error('Parameters are missing from the request.');
+        }
+        if (!event.requestContext.authorizer || event.requestContext.authorizer === null || !event.requestContext.authorizer.claims["cognito:username"]) {
+            httpStatus = 403;
+            throw new Error("Unauthenticated!");
         }
         const recipeTableName = process.env.RECIPES_TABLE_NAME;
         const recipeId: string = event.pathParameters["recipeId"]!;
@@ -30,7 +34,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
                 recipeId: recipeId,
                 itemId: ingredientId
             }),
-            ConditionExpression: "recipeId=:recipeId AND itemId=:itemId AND userId=:userId",
+            ConditionExpression: "recipeId=:recipeId AND attribute_exists(:itemId) AND userId=:userId",
             ExpressionAttributeValues: {
                 ":recipeId": {
                     S: recipeId
