@@ -67,10 +67,12 @@ export async function handler(event: APIGatewayEvent, context: Context) {
             })
         };
     } catch (error) {
+        const e = error as Error;
+        console.error(e.message);
         return {
             statusCode: httpStatus < 400 ? 400 : httpStatus,
             body: JSON.stringify({
-                message: (error as Error).message
+                message: e.message
             })
         }
     }

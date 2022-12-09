@@ -11,7 +11,7 @@ import {
     PutItemCommandInput,
     PutItemCommand,
 } from '@aws-sdk/client-dynamodb';
-import { marshall } from '@aws-sdk/util-dynamodb';
+import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
 import { IInstruction, Instruction } from '../../models/instruction.model';
 import { ddbClient } from '../../utils/DynamoDBClient';
 export async function handler(event: APIGatewayEvent, context: Context) {
@@ -22,12 +22,16 @@ export async function handler(event: APIGatewayEvent, context: Context) {
             throw new Error(`${event.httpMethod} HTTP method is not supported in ${context.functionName}`);
         }
         const recipeTableName: string = process.env.RECIPES_TABLE_NAME!;
-        if (event.pathParameters === null || event.pathParameters["recipeId"] === undefined || event.pathParameters["recipeId"].trim() === "" || event.body === undefined || event.body === null) {
-            statusCode = 400;
+        if (!event.pathParameters || event.pathParameters === null || !event.pathParameters["recipeId"]) {
+            statusCode = 404;
             throw new Error('Request is missing parameters or body.');
         }
         const recipeId: string = event.pathParameters["recipeId"];
-        const userId = event.requestContext.authorizer!.claims["cognito:username"];
+        if(!event.requestContext || event.requestContext === null || !event.requestContext.authorizer || event.requestContext.authorizer === null || !event.requestContext.authorizer.claims["cognito:username"]) {
+            statusCode = 403;
+            throw new Error("Unauthenticated!");
+        }
+        const userId: string = event.requestContext.authorizer.claims["cognito:username"];
         const queryCmdInput: QueryCommandInput = {
             TableName: recipeTableName,
             ExpressionAttributeValues: {
@@ -46,8 +50,8 @@ export async function handler(event: APIGatewayEvent, context: Context) {
         };
         const queryCmd = new QueryCommand(queryCmdInput);
         const queryCmdOutput: QueryCommandOutput = await ddbClient.send(queryCmd);
-        const eventBody: IInstruction = JSON.parse(event.body);
-        if (queryCmdOutput.Items === undefined || !queryCmdOutput.Count || queryCmdOutput.Count === 0) {
+        const eventBody: IInstruction = JSON.parse(event.body!);
+        if (!queryCmdOutput.Items || !queryCmdOutput.Count || queryCmdOutput.Count === 0) {
             console.log('Adding a new instruction for recipe without instructions');
             //add the instruction to the recipe as-is
             const instruction = new Instruction(
@@ -73,7 +77,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
         let newInstructionOrder = Number(eventBody.order);
         //decide final order
         if(newInstructionOrder < 1) newInstructionOrder = 1;
-        else if(newInstructionOrder > queryCmdOutput.Count!) newInstructionOrder = queryCmdOutput.Count+1;
+        else if(newInstructionOrder > queryCmdOutput.Count!) newInstructionOrder = queryCmdOutput.Count!+1;
         const newInstruction = new Instruction(
             recipeId,
             userId,
@@ -89,18 +93,19 @@ export async function handler(event: APIGatewayEvent, context: Context) {
             await ddbClient.send(putItemCmd);
         } else {
             const instructions = queryCmdOutput.Items!.map(item => {
+                const unmarshalledItem = unmarshall(item);
                 return new Instruction(
                     recipeId, 
                     userId, 
-                    item["step"].toString(), 
-                    Number(item["order"]),
-                    item["itemId"].toString()
+                    unmarshalledItem.step, 
+                    Number(unmarshalledItem.order),
+                    unmarshalledItem.itemId
                 );
             }).sort((a, b) => a.order - b.order);
             const putItems = instructions.map((instruction, i) => {
                 if (instruction.order === newInstruction.order) {
                     instructions[i].order += 1;
-                } else if(i > 0 && instructions[i-1] === newInstruction) {
+                } else if(i > 0 && instructions[i-1].order === newInstruction.order) {
                     instructions[i].order += 1;
                 }
                 return {
@@ -132,11 +137,13 @@ export async function handler(event: APIGatewayEvent, context: Context) {
             })
         };
     } catch (error) {
-        console.error(error);
-        console.error((error as Error).message)
+        const e = error as Error;
+        console.error(e.message)
         return {
-            statusCode: 200,
-            message: (error as Error).message
+            statusCode: statusCode < 400 ? 400 : statusCode,
+            body: JSON.stringify({
+                message: e.message
+            })
         }   
     }
 }

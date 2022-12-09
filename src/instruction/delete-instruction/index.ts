@@ -16,11 +16,15 @@ export async function handler(event: APIGatewayEvent, context: Context) {
             throw new Error(`${event.httpMethod} HTTP method is not supported in ${context.functionName}`);
         }
         const recipeTableName: string = process.env.RECIPES_TABLE_NAME!;
-        if (event.pathParameters === null || event.pathParameters["recipeId"] === undefined || event.pathParameters["instructionId"] === undefined) {
-            statusCode = 400;
+        if (event.pathParameters === null || !event.pathParameters["recipeId"] || !event.pathParameters["instructionId"]) {
+            statusCode = 404;
             throw new Error("Missing parameters for a valid request.");
         }
-        const userId = event.requestContext.authorizer!.claims["cognito:username"];
+        if(!event.requestContext || event.requestContext === null || !event.requestContext.authorizer || event.requestContext.authorizer === null || !event.requestContext.authorizer.claims["cognito:username"]) {
+            statusCode = 403;
+            throw new Error("Unauthenticated!");
+        }
+        const userId = event.requestContext.authorizer.claims["cognito:username"];
         const instructionId = event.pathParameters["instructionId"];
         const recipeId = event.pathParameters["recipeId"];
         const deleteItemCmdInput: DeleteItemCommandInput = {
@@ -53,9 +57,13 @@ export async function handler(event: APIGatewayEvent, context: Context) {
             })
         };
     } catch (error) {
+        const e = error as Error;
+        console.error(e.message);
         return {
             statusCode: statusCode < 400 ? 400 : statusCode,
-            message: (error as Error).message
+            body: JSON.stringify({
+                message: e.message
+            })
         }
     }
 }

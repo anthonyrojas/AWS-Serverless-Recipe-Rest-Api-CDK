@@ -73,7 +73,7 @@ export class LambdaStack extends cdk.Stack {
           {
             name: 'create-recipe',
             description: 'Lambda function to create a recipe and insert it into DynamoDB',
-            memorySize: 128
+            memorySize: 256
           },
           {
             name: 'delete-recipe',

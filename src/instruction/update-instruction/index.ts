@@ -26,11 +26,15 @@ export async function handler(event: APIGatewayEvent, context: Context) {
             throw new Error(`${event.httpMethod} HTTP method is not supported in ${context.functionName}`);
         }
         const recipeTableName: string = process.env.RECIPES_TABLE_NAME!;
-        const userId = event.requestContext.authorizer!.claims["cognito:username"];
-        if (event.pathParameters === null || event.pathParameters["recipeId"] === undefined) {
-            statusCode = 400;
+        if (!event.pathParameters || event.pathParameters === null || !event.pathParameters["recipeId"]) {
+            statusCode = 404;
             throw new Error("Missing parameters for a valid request.");
         }
+        if (!event.requestContext || !event.requestContext.authorizer || !event.requestContext.authorizer.claims["cognito:username"]) {
+            statusCode = 403;
+            throw new Error("Unauthorized!");
+        }
+        const userId = event.requestContext.authorizer.claims["cognito:username"];
         const recipeId: string = event.pathParameters!["recipeId"]!;
         if (event.pathParameters["instructionId"] === undefined || event.pathParameters["instructionId"] === null) {
             //mass update instruction orders
@@ -55,9 +59,17 @@ export async function handler(event: APIGatewayEvent, context: Context) {
                     ]
                 }
             });
-            await ddbClient.send(new BatchExecuteStatementCommand({
+            const res = await ddbClient.send(new BatchExecuteStatementCommand({
                 Statements: [...statementItems]
             }));
+            ddbClient.destroy();
+            return {
+                statusCode: 200,
+                body: JSON.stringify({
+                    message: 'Updated instruction orders.',
+                    updatedInstructionCount: res.Responses!.length || 0
+                })
+            }
         }
         const ingredientId: string = event.pathParameters!["instructionId"]!;
         const eventBody: IInstruction = JSON.parse(event.body!);
@@ -82,7 +94,9 @@ export async function handler(event: APIGatewayEvent, context: Context) {
         ddbClient.destroy();
         return {
             statusCode: 200, 
-            body: JSON.stringify(eventBody)
+            body: JSON.stringify({
+                instruction: eventBody
+            })
         }
     } catch (error) {
         console.error((error as Error).message);
