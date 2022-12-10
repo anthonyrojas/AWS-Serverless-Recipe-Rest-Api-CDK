@@ -89,7 +89,7 @@ export async function handler (event: APIGatewayEvent, context: Context) {
             }
         }
         //get all recipes without the description
-        let limit = 20;
+        let limit = 100;
         const queryParams = event.queryStringParameters;
         if(queryParams !== undefined && queryParams !== null && queryParams["limit"]) {
             limit = Number(queryParams["limit"]) || 20;
@@ -110,7 +110,7 @@ export async function handler (event: APIGatewayEvent, context: Context) {
                 }
             },
             Limit: limit,
-            AttributesToGet: ["recipeId", "userId", "itemId", "name", "entityType"],
+            //AttributesToGet: ["recipeId", "userId", "itemId", "name", "entityType"],
             ExclusiveStartKey: paginationStart
         });
         const data = await ddbClient.send(queryCmd);
