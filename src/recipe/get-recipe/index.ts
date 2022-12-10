@@ -3,7 +3,7 @@ import {
     Context
 } from 'aws-lambda';
 import {
-    ScanCommand,
+    AttributeValue,
     QueryCommand,
     QueryCommandInput,
     QueryCommandOutput
@@ -88,39 +88,50 @@ export async function handler (event: APIGatewayEvent, context: Context) {
                 })
             }
         }
-        //get all recipes with names and id only
+        //get all recipes without the description
         let limit = 20;
         const queryParams = event.queryStringParameters;
         if(queryParams !== undefined && queryParams !== null && queryParams["limit"]) {
             limit = Number(queryParams["limit"]) || 20;
         }
-        const scanCmd = new ScanCommand({
+        let paginationStart: Record<string, AttributeValue> | undefined = undefined;
+        if (queryParams && queryParams["paginationPk"] && queryParams["paginationPk"] !== null && queryParams["paginationSk"] && queryParams["paginationSk"] !== null) {
+            paginationStart = {};
+            paginationStart["entityType"] = {S: queryParams["paginationPk"]};
+            paginationStart["itemId"] = {S: queryParams["paginationSk"]};
+        }
+        const queryCmd = new QueryCommand({
             TableName: recipeTableName,
-            //AttributesToGet: ["recipeId", "itemId", "name", "entityType"],
-            // Limit: limit,
-            FilterExpression: "entityType = :entityType",
+            IndexName: "EntityTypeItemIndex",
+            KeyConditionExpression: "entityType=:entityType",
             ExpressionAttributeValues: {
                 ":entityType": {
                     S: "RECIPE"
                 }
             },
+            Limit: limit,
+            AttributesToGet: ["recipeId", "userId", "itemId", "name", "entityType"],
+            ExclusiveStartKey: paginationStart
         });
-        const data = await ddbClient.send(scanCmd);
-        const unmarshalledItems = data.Items?.map(item => {
-            const recipeItem = unmarshall(item);
+        const data = await ddbClient.send(queryCmd);
+        if (!data.Items || !data.Count) {
             return {
-                recipeId: recipeItem.recipeId,
-                itemId: recipeItem.itemId,
-                userId: recipeItem.userId,
-                name: recipeItem.name,
-                imageUrls: recipeItem.imageUrls
+                statusCode: 200,
+                body: JSON.stringify({
+                    recipes: [],
+                    count: 0,
+                    lastEvaluatedKey: null
+                })
             }
-        }).splice(0, limit);
+        }
+        const recipes = data.Items.map(item => {
+            return unmarshall(item) as IRecipe;
+        });
         ddbClient.destroy();
         return {
             statusCode: 200,
             body: JSON.stringify({
-                recipes: unmarshalledItems ? unmarshalledItems : [],
+                recipes: recipes,
                 count: data.Count,
                 lastEvaluatedKey: !data.LastEvaluatedKey ? undefined : unmarshall(data.LastEvaluatedKey)
             })

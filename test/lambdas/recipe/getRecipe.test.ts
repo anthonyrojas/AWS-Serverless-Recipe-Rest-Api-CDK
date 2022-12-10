@@ -70,7 +70,7 @@ describe("execute get-recipe lambda function for /recipe", () => {
         ddbClient.send = jest.fn().mockResolvedValue({
             Items: undefined,
             Count: 0
-        } as ScanCommandOutput);
+        } as QueryCommandOutput);
         const res = await handler(mockRecipesApiEventValid, mockContext);
         const body = JSON.parse(res.body);
         expect(res.statusCode).toEqual(200);
@@ -82,14 +82,29 @@ describe("execute get-recipe lambda function for /recipe", () => {
             Items: [marshall(mockRecipe.toPutRequestItem())],
             Count: 1,
             LastEvaluatedKey: marshall({
-                recipeId: mockRecipe.itemId,
+                entityType: "RECIPE",
                 itemId: mockRecipe.recipeId
             })
-        } as ScanCommandOutput);
+        } as QueryCommandOutput);
         const res = await handler(mockRecipesApiEventValid, mockContext);
         const body = JSON.parse(res.body);
         expect(res.statusCode).toEqual(200);
         expect(ddbClient.send).toHaveBeenCalledTimes(1);
         expect(body.recipes.length).toEqual(1);
-    })
-})
+    });
+    it("should return a list of recipes given pagination", async () => {
+        ddbClient.send = jest.fn().mockResolvedValue({
+            Items: [marshall(mockRecipe.toPutRequestItem())],
+            Count: 1,
+            LastEvaluatedKey: marshall({
+                entityType: "RECIPE",
+                itemId: mockRecipe.recipeId
+            })
+        } as QueryCommandOutput);
+        const res = await handler(mockRecipesApiEventValid, mockContext);
+        const body = JSON.parse(res.body);
+        expect(res.statusCode).toEqual(200);
+        expect(ddbClient.send).toHaveBeenCalledTimes(1);
+        expect(body.recipes.length).toEqual(1);
+    });
+});
