@@ -75,7 +75,7 @@ export class AuthStack extends cdk.Stack {
                     OAuthScope.OPENID
                 ],
                 flows: {
-                    implicitCodeGrant: false,
+                    implicitCodeGrant: true,
                     authorizationCodeGrant: true,
                     clientCredentials: false
                 }
