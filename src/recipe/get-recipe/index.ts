@@ -95,10 +95,11 @@ export async function handler (event: APIGatewayEvent, context: Context) {
             limit = Number(queryParams["limit"]) || 20;
         }
         let paginationStart: Record<string, AttributeValue> | undefined = undefined;
-        if (queryParams && queryParams["paginationPk"] && queryParams["paginationPk"] !== null && queryParams["paginationSk"] && queryParams["paginationSk"] !== null) {
+        if (queryParams && queryParams["paginationRecipeId"] && queryParams["paginationRecipeId"] !== null && queryParams["paginationItemId"] && queryParams["paginationItemId"] !== null) {
             paginationStart = {};
-            paginationStart["entityType"] = {S: queryParams["paginationPk"]};
-            paginationStart["itemId"] = {S: queryParams["paginationSk"]};
+            paginationStart["entityType"] = {S: 'RECIPE'};
+            paginationStart["recipeId"] = {S: queryParams["paginationRecipeId"]}
+            paginationStart["itemId"] = {S: queryParams["paginationItemId"]};
         }
         const queryCmd = new QueryCommand({
             TableName: recipeTableName,
@@ -110,6 +111,7 @@ export async function handler (event: APIGatewayEvent, context: Context) {
                 }
             },
             Limit: limit,
+            ProjectionExpression: "recipeId,itemId,userId,entityType,imageUrls",
             //AttributesToGet: ["recipeId", "userId", "itemId", "name", "entityType"],
             ExclusiveStartKey: paginationStart
         });
