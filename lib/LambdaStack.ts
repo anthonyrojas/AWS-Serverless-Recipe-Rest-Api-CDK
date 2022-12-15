@@ -25,7 +25,7 @@ export class LambdaStack extends cdk.Stack {
     public readonly deleteInstructionLambda: NodejsFunction;
     public readonly getRecipeImagePresignedUrlLambda: NodejsFunction;
     public readonly updateRecipeImageLambda: NodejsFunction;
-    private readonly LAMBDA_RUNTIME = Runtime.NODEJS_16_X;
+    private readonly LAMBDA_RUNTIME = Runtime.NODEJS_18_X;
 
     constructor(scope: Construct, id: string, props: LambdaStackProps) {
         super(scope, id, props);
