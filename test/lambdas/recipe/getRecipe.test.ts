@@ -1,7 +1,6 @@
 import {handler} from '../../../src/recipe/get-recipe/index';
-// import {IRecipe, Recipe} from '../../../src/models/recipe.model';
 import { ddbClient } from '../../../src/utils/DynamoDBClient';
-import { QueryCommandOutput, ScanCommandOutput } from '@aws-sdk/client-dynamodb';
+import { QueryCommandOutput } from '@aws-sdk/client-dynamodb';
 import {marshall} from '@aws-sdk/util-dynamodb'
 import {
     mockRecipe, 
@@ -10,7 +9,8 @@ import {
     mockApiEventRecipeIdValid,
     mockContext,
     mockApiEventInvalidHttpMethod,
-    mockRecipesApiEventValid
+    mockRecipesApiEventValid,
+    mockRecipesApiEventValidWithSearchName
 } from './__mocks__/getRecipe.mock';
 describe("execute get-recipe lambda function for /recipe/:id", () => {
     afterEach((done) => {
@@ -57,7 +57,7 @@ describe("execute get-recipe lambda function for /recipe/:id", () => {
         expect(ddbClient.send).toBeCalledTimes(1);
         expect(Object.keys(body)).toContain('recipe');
         expect(Object.keys(body).length).toEqual(1);
-        expect(Object.keys(body.recipe).length).toEqual(11);
+        expect(Object.keys(body.recipe).length).toBeGreaterThanOrEqual(11);
     });
 });
 describe("execute get-recipe lambda function for /recipe", () => {
@@ -107,4 +107,19 @@ describe("execute get-recipe lambda function for /recipe", () => {
         expect(ddbClient.send).toHaveBeenCalledTimes(1);
         expect(body.recipes.length).toEqual(1);
     });
+    it("should return a list of recipes given search name and pagination", async () => {
+        ddbClient.send = jest.fn().mockResolvedValue({
+            Items: [marshall(mockRecipe.toPutRequestItem())],
+            Count: 1,
+            LastEvaluatedKey: marshall({
+                entityType: "RECIPE",
+                itemId: mockRecipe.recipeId
+            })
+        } as QueryCommandOutput);
+        const res = await handler(mockRecipesApiEventValidWithSearchName, mockContext);
+        const body = JSON.parse(res.body);
+        expect(res.statusCode).toEqual(200);
+        expect(ddbClient.send).toHaveBeenCalledTimes(1);
+        expect(body.recipes.length).toEqual(1);
+    })
 });

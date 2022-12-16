@@ -76,3 +76,15 @@ export const mockRecipesApiEventValidWithPagination: APIGatewayEvent = {
     },
     isBase64Encoded: false
 } as any;
+export const mockRecipesApiEventValidWithSearchName: APIGatewayEvent = {
+    httpMethod: 'GET',
+    body: null,
+    headers: mockHeaders,
+    path: "/recipe",
+    queryStringParameters: {
+        "paginationPk": "RECIPE",
+        "paginationSk": "1100-0000-0000-00000",
+        "searchName": "sandwich"
+    },
+    isBase64Encoded: false
+} as any;

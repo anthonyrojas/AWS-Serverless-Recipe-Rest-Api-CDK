@@ -101,6 +101,10 @@ export async function handler (event: APIGatewayEvent, context: Context) {
             paginationStart["recipeId"] = {S: queryParams["paginationKey"]}
             paginationStart["itemId"] = {S: queryParams["paginationKey"]};
         }
+        let searchName: string = "";
+        if (queryParams && queryParams["searchName"] && queryParams["searchName"] !== null) {
+            searchName=queryParams["searchName"];
+        }
         const queryCmd = new QueryCommand({
             TableName: recipeTableName,
             IndexName: "EntityTypeItemIndex",
@@ -108,10 +112,14 @@ export async function handler (event: APIGatewayEvent, context: Context) {
             ExpressionAttributeValues: {
                 ":entityType": {
                     S: "RECIPE"
+                },
+                ":searchName": {
+                    S: searchName
                 }
             },
             Limit: limit,
-            ProjectionExpression: "recipeId,itemId,userId,entityType,imageUrls",
+            FilterExpression: "contains(searchName, :searchName)",
+            ProjectionExpression: "recipeId,itemId,userId,entityType,imageUrls,searchName",
             ExclusiveStartKey: paginationStart
         });
         const data = await ddbClient.send(queryCmd);

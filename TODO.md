@@ -14,13 +14,15 @@ The following is a list of improvements that are pending implementation.
 - [X] Add Models for request body validations to API gateway
 - [ ] Add Ratings functionality to the API for users
 - [ ] Flesh out README
-- [ ] Add images a recipe
+- [X] Add images a recipe
 - [X] Add a pipeline for code changes
 - [X] Separate stacks by business domain
     - [X] Lambda Stack
     - [X] ApiGateway Stack
     - [X] Authentication Stack
     - [X] Database Stack
-- [ ] Add unit tests
+- [X] Add unit tests
 - [ ] Add integ tests
-- [ ] (Optional) Upgrade runtime to NodeJS 18
+- [X] Add primitive search for recipe by name
+- [X] (Optional) Upgrade runtime to NodeJS 18
+- [ ] Add userId recipe query to get-recipe 

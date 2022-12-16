@@ -13,7 +13,8 @@ export interface IRecipe {
     prepTime: Number;
     ingredients?: IIngredient[];
     instructions?: IInstruction[];
-    imageUrls?: string[]
+    imageUrls?: string[];
+    searchName?: string;
 }
 export class Recipe implements IRecipe {
     recipeId: string;
@@ -26,13 +27,15 @@ export class Recipe implements IRecipe {
     prepTime: Number;
     ingredients: Ingredient[];
     instructions: Instruction[];
-    imageUrls: string[]
+    imageUrls: string[];
+    searchName: string;
     constructor(userId: string, pName: string, pDescription: string, pCookTime: Number, pPrepTime: Number, pId?: string, pImageUrls?: string[]) {
         if (pId === undefined || pId === null) this.recipeId = uuid();
         else this.recipeId = pId;
         this.itemId = this.recipeId;
         this.userId = userId;
         this.name = pName.trim();
+        this.searchName = pName.toLowerCase().trim();
         this.description = pDescription.trim();
         this.cookTime = pCookTime;
         this.prepTime = pPrepTime;
@@ -63,7 +66,8 @@ export class Recipe implements IRecipe {
             description: this.description,
             cookTime: this.cookTime,
             prepTime: this.prepTime,
-            imageUrls: this.imageUrls
+            imageUrls: this.imageUrls,
+            searchName: this.searchName
         }
     }
 }
