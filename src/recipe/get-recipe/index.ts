@@ -103,7 +103,7 @@ export async function handler (event: APIGatewayEvent, context: Context) {
         }
         let searchName: string = "";
         if (queryParams && queryParams["searchName"] && queryParams["searchName"] !== null) {
-            searchName=queryParams["searchName"];
+            searchName=queryParams["searchName"].toLowerCase().trim();
         }
         const queryCmd = new QueryCommand({
             TableName: recipeTableName,
