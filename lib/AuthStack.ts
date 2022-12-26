@@ -58,7 +58,6 @@ export class AuthStack extends cdk.Stack {
             }
         });
         const userPoolClient: UserPoolClient = userPool.addClient('RecipeApiUserPoolClient', {
-            generateSecret: true,
             userPoolClientName: 'RecipeApiUserPoolClient',
             authFlows: {
                 adminUserPassword: true,
