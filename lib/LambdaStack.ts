@@ -16,6 +16,7 @@ export class LambdaStack extends cdk.Stack {
     public readonly createRecipeLambda: NodejsFunction;
     public readonly updateRecipeLambda: NodejsFunction;
     public readonly getRecipeLambda: NodejsFunction;
+    public readonly getUserRecipeLambda: NodejsFunction;
     public readonly deleteRecipeLambda: NodejsFunction;
     public readonly createIngredientLambda: NodejsFunction;
     public readonly updateIngredientLambda: NodejsFunction;
@@ -44,6 +45,7 @@ export class LambdaStack extends cdk.Stack {
         this.updateRecipeLambda = recipeFunctions["update-recipe"];
         this.deleteRecipeLambda = recipeFunctions["delete-recipe"];
         this.getRecipeLambda = recipeFunctions["get-recipe"];
+        this.getUserRecipeLambda = recipeFunctions["get-user-recipe"];
 
         /* Recipe Image Lambdas */
         const recipeImageFunctions = this.addRecipeImageLambdas(recipeImageBucket, props.RecipeTable);
@@ -84,6 +86,11 @@ export class LambdaStack extends cdk.Stack {
             name: 'update-recipe',
             description: 'Lambda function to update recipe in DynamoDB',
             memorySize: 128
+          },
+          {
+            name: "get-user-recipe",
+            description: "Lambda function to get recipes for a specific user in DynamoDB",
+            memorySize: 256
           }
         ];
         const functions: Record<string, NodejsFunction> = {}

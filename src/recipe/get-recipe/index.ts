@@ -74,6 +74,7 @@ export async function handler (event: APIGatewayEvent, context: Context) {
             if (recipeItemsUnmarshalled.length === 0) {
                 return {
                     statusCode: 404,
+                    headers: headers,
                     body: JSON.stringify({
                         recipe: {},
                         message: 'Recipe not found.'
@@ -142,6 +143,7 @@ export async function handler (event: APIGatewayEvent, context: Context) {
         ddbClient.destroy();
         return {
             statusCode: 200,
+            headers: headers,
             body: JSON.stringify({
                 recipes: recipes,
                 count: data.Count,

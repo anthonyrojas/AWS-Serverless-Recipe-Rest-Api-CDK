@@ -36,6 +36,7 @@ export class ServerlessRecipeApiPipelineStage extends cdk.Stage {
             },
             createRecipeLambda: lambdaStack.createRecipeLambda,
             getRecipeLambda: lambdaStack.getRecipeLambda,
+            getUserRecipesLambda: lambdaStack.getUserRecipeLambda,
             updateRecipeLambda: lambdaStack.updateRecipeLambda,
             deleteRecipeLambda: lambdaStack.deleteRecipeLambda,
             createIngredientLambda: lambdaStack.createIngredientLambda,

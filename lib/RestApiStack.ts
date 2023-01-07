@@ -20,6 +20,7 @@ interface RestApiStackProps extends cdk.StackProps {
     readonly createRecipeLambda: NodejsFunction;
     readonly updateRecipeLambda: NodejsFunction;
     readonly getRecipeLambda: NodejsFunction;
+    readonly getUserRecipesLambda: NodejsFunction;
     readonly deleteRecipeLambda: NodejsFunction;
     readonly createIngredientLambda: NodejsFunction;
     readonly updateIngredientLambda: NodejsFunction;
@@ -97,11 +98,14 @@ export class RestApiStack extends cdk.Stack {
         const instructionOrderRequestModel = this.addInstructionOrderRequestModel(api);
 
         /* Add routes with lambda handlers */
-        api.root
-        .addResource('recipes')
-        .addMethod('GET', new LambdaIntegration(props.getRecipeLambda), {
+        const recipesResource = api.root.addResource("recipes");
+        recipesResource.addMethod('GET', new LambdaIntegration(props.getRecipeLambda), {
             apiKeyRequired: true
         });
+        const userRecipesResource = recipesResource.addResource("{userId}");
+        userRecipesResource.addMethod("GET", new LambdaIntegration(props.getUserRecipesLambda), {
+            apiKeyRequired: true
+        })
 
         const recipeResource = api.root.addResource('recipe');
         const recipeIdResource = recipeResource.addResource("{recipeId}");
