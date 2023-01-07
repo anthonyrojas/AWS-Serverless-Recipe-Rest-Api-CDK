@@ -7,7 +7,7 @@ export interface IRecipe {
     itemId?: string; //same as recipeId
     userId: string;
     entityType?: string;
-    name: string;
+    title: string;
     description: string;
     cookTime: Number;
     prepTime: Number;
@@ -21,7 +21,7 @@ export class Recipe implements IRecipe {
     itemId: string; //same as recipeId
     userId: string;
     entityType: string;
-    name: string;
+    title: string;
     description: string;
     cookTime: Number;
     prepTime: Number;
@@ -29,13 +29,13 @@ export class Recipe implements IRecipe {
     instructions: Instruction[];
     imageUrls: string[];
     searchName: string;
-    constructor(userId: string, pName: string, pDescription: string, pCookTime: Number, pPrepTime: Number, pId?: string, pImageUrls?: string[]) {
+    constructor(userId: string, pTitle: string, pDescription: string, pCookTime: Number, pPrepTime: Number, pId?: string, pImageUrls?: string[]) {
         if (pId === undefined || pId === null) this.recipeId = uuid();
         else this.recipeId = pId;
         this.itemId = this.recipeId;
         this.userId = userId;
-        this.name = pName.trim();
-        this.searchName = pName.toLowerCase().trim();
+        this.title = pTitle.trim();
+        this.searchName = pTitle.toLowerCase().trim();
         this.description = pDescription.trim();
         this.cookTime = pCookTime;
         this.prepTime = pPrepTime;
@@ -47,7 +47,7 @@ export class Recipe implements IRecipe {
     }
     attachIIngredients(iIngredients: IIngredient[]) {
         this.ingredients = iIngredients.map(iIngredient => {
-            return new Ingredient(this.recipeId, this.userId, iIngredient.name, iIngredient.quantity, iIngredient.units);
+            return new Ingredient(this.recipeId, this.userId, iIngredient.title, iIngredient.quantity, iIngredient.units);
         });
     }
     attachIInstructions(iInstructions: IInstruction[]) {
@@ -62,7 +62,7 @@ export class Recipe implements IRecipe {
             userId: this.userId,
             itemId: this.itemId,
             entityType: this.entityType,
-            name: this.name,
+            title: this.title,
             description: this.description,
             cookTime: this.cookTime,
             prepTime: this.prepTime,

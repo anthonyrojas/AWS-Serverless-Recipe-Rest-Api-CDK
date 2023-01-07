@@ -41,7 +41,7 @@ export async function handler (event: APIGatewayEvent, context: Context) {
             KeyConditionExpression: 'userId=:userId',
             FilterExpression: "entityType=:entityType",
             IndexName: "UserItemIndex",
-            ProjectionExpression: "recipeId,itemId,userId,entityType,imageUrls,searchName,name",
+            ProjectionExpression: "recipeId,itemId,userId,entityType,imageUrls,searchName,title",
             Limit: limit
         };
         const queryCmd = new QueryCommand(queryCmdInput);

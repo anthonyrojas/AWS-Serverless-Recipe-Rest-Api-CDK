@@ -122,7 +122,7 @@ export async function handler (event: APIGatewayEvent, context: Context) {
             },
             Limit: limit,
             FilterExpression: "contains(searchName, :searchName)",
-            ProjectionExpression: "recipeId,itemId,userId,entityType,imageUrls,searchName,name",
+            ProjectionExpression: "recipeId,itemId,userId,entityType,imageUrls,searchName,title",
             ExclusiveStartKey: paginationStart
         });
         const data = await ddbClient.send(queryCmd);

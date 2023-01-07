@@ -4,7 +4,7 @@ export interface IIngredient {
     itemId?: string;
     recipeId?: string;
     entityType?: string;
-    name: string;
+    title: string;
     quantity: Number;
     units: string;
     userId?: string;
@@ -12,16 +12,16 @@ export interface IIngredient {
 export class Ingredient implements IIngredient {
     itemId: string;
     userId: string;
-    name: string;
+    title: string;
     entityType: string;
     quantity: Number;
     units: string;
     recipeId: string;
-    constructor( pRecipeId: string, pUserId: string, pName: string, pQuantity: Number, pUnits: string, pId: string|null = null) {
+    constructor( pRecipeId: string, pUserId: string, pTitle: string, pQuantity: Number, pUnits: string, pId: string|null = null) {
         if (pId === null) this.itemId = uuid();
         else this.itemId = pId;
         this.userId = pUserId;
-        this.name = pName.trim();
+        this.title = pTitle.trim();
         this.quantity = pQuantity;
         this.units = pUnits.trim();
         this.recipeId = pRecipeId;
@@ -33,7 +33,7 @@ export class Ingredient implements IIngredient {
             userId: this.userId,
             itemId: this.itemId,
             entityType: this.entityType,
-            name: this.name,
+            title: this.title,
             units: this.units,
             quantity: this.quantity
         }
