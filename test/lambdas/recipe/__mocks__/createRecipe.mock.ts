@@ -52,7 +52,7 @@ export const mockApiEventMissingBody: APIGatewayEvent = {
 export const mockApiEventValidMissingIngredientAndInstruction: APIGatewayEvent = {
     httpMethod: 'POST',
     body: JSON.stringify({
-        name: "Sandwich",
+        title: "Sandwich",
         description: "An awesome sandwich recipe!",
         prepTime: 10,
         cookTime: 0,
@@ -78,13 +78,13 @@ export const mockApiEventValidMissingIngredientAndInstruction: APIGatewayEvent =
 export const mockApiEventValid: APIGatewayEvent = {
     httpMethod: 'POST',
     body: JSON.stringify({
-        name: "Sandwich",
+        title: "Sandwich",
         description: "An awesome sandwich recipe!",
         prepTime: 10,
         cookTime: 0,
         imageUrls: [],
         ingredients: [{
-            name: 'Bread',
+            title: 'Bread',
             units: 'slices',
             quantity: 2
         }],

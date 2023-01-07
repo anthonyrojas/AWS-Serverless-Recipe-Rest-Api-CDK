@@ -34,7 +34,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
         const requestBody: IIngredient = JSON.parse(event.body!);
         const ingredient: Ingredient = new Ingredient(
             recipeId,
-            requestBody.name,
+            requestBody.title,
             userId,
             requestBody.quantity,
             requestBody.units,

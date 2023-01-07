@@ -7,7 +7,7 @@ import { IIngredient } from '../../../../src/models/ingredient.model';
 const MOCK_USER_ID = "0000-0000-0000-00000";
 const MOCK_RECIPE_ID = "1000-0000-0000-00000";
 const MOCK_INGREDIENT: IIngredient = {
-    name: "Bread",
+    title: "Bread",
     quantity: 2,
     units: "slices"
 };

@@ -33,7 +33,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
         const ingredient: Ingredient = new Ingredient(
             recipeId,
             userId,
-            requestBody.name,
+            requestBody.title,
             requestBody.quantity,
             requestBody.units
         );

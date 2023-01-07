@@ -281,7 +281,7 @@ export class RestApiStack extends cdk.Stack {
                 title: "recipeRequest",
                 type: JsonSchemaType.OBJECT,
                 properties: {
-                    name: {
+                    title: {
                         type: JsonSchemaType.STRING,
                         maxLength: 500
                     },
@@ -303,7 +303,7 @@ export class RestApiStack extends cdk.Stack {
                         items: {
                             type: JsonSchemaType.OBJECT,
                             properties: {
-                                name: {
+                                title: {
                                     type: JsonSchemaType.STRING
                                 },
                                 quantity: {
@@ -347,7 +347,7 @@ export class RestApiStack extends cdk.Stack {
                 title: "ingredientRequest",
                 type: JsonSchemaType.OBJECT,
                 properties: {
-                    name: {
+                    title: {
                         type: JsonSchemaType.STRING
                     },
                     quantity: {

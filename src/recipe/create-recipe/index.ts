@@ -31,8 +31,8 @@ export async function handler (event: APIGatewayEvent, context: Context) {
             throw new Error("Missing request body.")
         }
         const requestBody: IRecipe = JSON.parse(event.body);
-        const {name, description, cookTime, prepTime, ingredients, instructions} = requestBody;
-        const recipe: Recipe = new Recipe(userId, name, description, cookTime, prepTime);
+        const {title, description, cookTime, prepTime, ingredients, instructions} = requestBody;
+        const recipe: Recipe = new Recipe(userId, title, description, cookTime, prepTime);
         recipe.attachIIngredients(ingredients!);
         recipe.attachIInstructions(instructions!);
 

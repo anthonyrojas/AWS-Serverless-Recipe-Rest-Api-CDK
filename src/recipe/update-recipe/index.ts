@@ -59,7 +59,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
             statusCode: 200,
             headers: headers,
             body: JSON.stringify({
-                message: `Successfully updated ${requestBody.name} recipe.`
+                message: `Successfully updated ${requestBody.title} recipe.`
             })
         }
     } catch(error) {
