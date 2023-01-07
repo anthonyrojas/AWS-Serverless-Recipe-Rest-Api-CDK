@@ -5,6 +5,7 @@ import {
 import { S3Client, PutObjectCommand} from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import {v4 as uuid} from "uuid";
+import { headers } from '../../utils/Headers';
 
 export async function handler(event: APIGatewayEvent, context: Context) {
     let statusCode = 200;
@@ -33,6 +34,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
         );
         return {
             statusCode: 200,
+            headers: headers,
             body: JSON.stringify({
                 signedUrl,
                 filename: `${key}.${imageExt}`
@@ -43,6 +45,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
         console.error(error.message);
         return {
             statusCode: statusCode < 400 ? 400 : statusCode,
+            headers: headers,
             body: JSON.stringify({
                 message: error.message
             })

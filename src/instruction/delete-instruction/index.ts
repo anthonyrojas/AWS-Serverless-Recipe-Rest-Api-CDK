@@ -7,6 +7,7 @@ import {
     DeleteItemCommandInput
 } from '@aws-sdk/client-dynamodb';
 import { ddbClient } from '../../utils/DynamoDBClient';
+import { headers } from '../../utils/Headers';
 
 export async function handler(event: APIGatewayEvent, context: Context) {
     let statusCode = 200;
@@ -52,6 +53,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
         ddbClient.destroy();
         return {
             statusCode: 200,
+            headers: headers,
             body: JSON.stringify({
                 message: `Deleted instruction ${instructionId} from recipe ${recipeId}`
             })
@@ -61,6 +63,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
         console.error(e.message);
         return {
             statusCode: statusCode < 400 ? 400 : statusCode,
+            headers: headers,
             body: JSON.stringify({
                 message: e.message
             })

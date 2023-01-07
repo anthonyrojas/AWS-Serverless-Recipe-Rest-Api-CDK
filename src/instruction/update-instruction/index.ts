@@ -12,6 +12,7 @@ import {
 } from '@aws-sdk/util-dynamodb';
 import { IInstruction } from '../../models/instruction.model';
 import {ddbClient} from '../../utils/DynamoDBClient';
+import { headers } from '../../utils/Headers';
 
 interface IInstructionOrder {
     itemId: string;
@@ -65,6 +66,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
             ddbClient.destroy();
             return {
                 statusCode: 200,
+                headers: headers,
                 body: JSON.stringify({
                     message: 'Updated instruction orders.',
                     updatedInstructionCount: res.Responses!.length || 0
@@ -94,6 +96,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
         ddbClient.destroy();
         return {
             statusCode: 200, 
+            headers: headers,
             body: JSON.stringify({
                 instruction: eventBody
             })
@@ -102,6 +105,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
         console.error((error as Error).message);
         return {
             statusCode: statusCode < 400 ? 400 : statusCode,
+            headers: headers,
             body: JSON.stringify({
                 message: (error as Error).message
             })

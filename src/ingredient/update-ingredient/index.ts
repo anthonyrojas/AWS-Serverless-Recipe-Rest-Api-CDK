@@ -9,6 +9,7 @@ import {
 } from '@aws-sdk/client-dynamodb';
 import { IIngredient, Ingredient } from '../../models/ingredient.model';
 import { ddbClient } from '../../utils/DynamoDBClient';
+import { headers } from '../../utils/Headers';
 
 export async function handler(event: APIGatewayEvent, context: Context) {
     let httpStatus = 200;
@@ -62,6 +63,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
         ddbClient.destroy();
         return {
             statusCode: 200,
+            haeders: headers,
             body: JSON.stringify({
                 ingredient: ingredient.toPutRequestItem()
             })
@@ -71,6 +73,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
         console.error(e.message);
         return {
             statusCode: httpStatus < 400 ? 400 : httpStatus,
+            headers: headers,
             body: JSON.stringify({
                 message: e.message
             })

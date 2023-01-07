@@ -11,6 +11,7 @@ import {
 } from '@aws-sdk/util-dynamodb'
 import {Recipe, IRecipe} from "../../models/recipe.model";
 import { ddbClient } from '../../utils/DynamoDBClient';
+import { headers } from '../../utils/Headers';
 
 export async function handler (event: APIGatewayEvent, context: Context) {
     let statusCode = 200;
@@ -67,6 +68,7 @@ export async function handler (event: APIGatewayEvent, context: Context) {
         ddbClient.destroy();
         return {
             statusCode: 200,
+            headers: headers,
             body: JSON.stringify({
                 recipe: recipe
             })
@@ -77,6 +79,7 @@ export async function handler (event: APIGatewayEvent, context: Context) {
         console.log(e);
         return {
             statusCode: statusCode < 400 ? 400 : statusCode,
+            headers: headers,
             body: JSON.stringify({
                 error: e.message
             })

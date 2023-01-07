@@ -8,6 +8,7 @@ import {
     BatchWriteItemCommandInput
 } from '@aws-sdk/client-dynamodb';
 import { ddbClient } from '../../utils/DynamoDBClient';
+import { headers } from '../../utils/Headers';
 
 export async function handler(event: APIGatewayEvent, context: Context) {
     let httpStatus = 200;
@@ -65,7 +66,8 @@ export async function handler(event: APIGatewayEvent, context: Context) {
         await ddbClient.send(batchDeleteCmd);
         ddbClient.destroy();
         return {
-            statusCode: httpStatus, 
+            statusCode: httpStatus,
+            headers: headers, 
             body: JSON.stringify({
                 message: `Successfully deleted recipe with id ${id}`
             })
@@ -75,6 +77,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
         console.log(httpStatus)
         return {
             statusCode: httpStatus < 400 ? 400 : httpStatus,
+            headers: headers,
             body: JSON.stringify({
                 error: e.message
             })

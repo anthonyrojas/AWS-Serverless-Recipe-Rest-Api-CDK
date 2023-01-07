@@ -14,6 +14,7 @@ import {
 import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
 import { IInstruction, Instruction } from '../../models/instruction.model';
 import { ddbClient } from '../../utils/DynamoDBClient';
+import { headers } from '../../utils/Headers';
 export async function handler(event: APIGatewayEvent, context: Context) {
     let statusCode = 200;
     try {
@@ -68,6 +69,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
             await ddbClient.send(putItemCmd);
             return {
                 statusCode: 200,
+                headers: headers,
                 body: JSON.stringify({
                     instruction: instruction.toPutRequestItem()
                 })
@@ -132,6 +134,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
         ddbClient.destroy();
         return {
             statusCode: 200,
+            headers: headers,
             body: JSON.stringify({
                 instruction: newInstruction.toPutRequestItem()
             })
@@ -141,6 +144,7 @@ export async function handler(event: APIGatewayEvent, context: Context) {
         console.error(e.message)
         return {
             statusCode: statusCode < 400 ? 400 : statusCode,
+            headers: headers,
             body: JSON.stringify({
                 message: e.message
             })

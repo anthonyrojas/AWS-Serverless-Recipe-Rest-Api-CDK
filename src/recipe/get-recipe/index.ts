@@ -15,6 +15,7 @@ import {IRecipe} from "../../models/recipe.model";
 import {IIngredient} from "../../models/ingredient.model";
 import {IInstruction} from "../../models/instruction.model";
 import {ddbClient} from '../../utils/DynamoDBClient';
+import { headers } from '../../utils/Headers';
 
 function unmarshallQueryCmdOutput(outputItems: QueryCommandOutput) {
     if (outputItems.Count === undefined || outputItems.Count === 0 || outputItems.Items === undefined) return [];
@@ -83,6 +84,7 @@ export async function handler (event: APIGatewayEvent, context: Context) {
             ddbClient.destroy();
             return {
                 statusCode: 200,
+                headers: headers,
                 body: JSON.stringify({
                     recipe: recipe
                 })
@@ -126,6 +128,7 @@ export async function handler (event: APIGatewayEvent, context: Context) {
         if (!data.Items || !data.Count) {
             return {
                 statusCode: 200,
+                headers: headers,
                 body: JSON.stringify({
                     recipes: [],
                     count: 0,
@@ -150,6 +153,7 @@ export async function handler (event: APIGatewayEvent, context: Context) {
         console.log(e);
         return {
             statusCode: statusCode < 400 ? 400 : statusCode,
+            headers: headers,
             body: JSON.stringify({
                 error: e.message
             })
