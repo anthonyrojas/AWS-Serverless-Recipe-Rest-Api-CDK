@@ -52,7 +52,12 @@ export async function handler (event: APIGatewayEvent, context: Context) {
         ddbClient.destroy();
         return {
             statusCode: 200,
-            headers: headers
+            headers: headers,
+            body: JSON.stringify({
+                recipes: recipes,
+                count: res.Count,
+                lastEvaluatedKey: res.LastEvaluatedKey
+            })
         }
     } catch (e: any) {
         const error = e as Error;
