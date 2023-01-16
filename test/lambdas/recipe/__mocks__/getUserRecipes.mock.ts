@@ -52,7 +52,7 @@ export const mockRecipesApiEventValid: APIGatewayEvent = {
     body: null,
     headers: mockHeaders,
     path: "/recipes/{userId}",
-    queryStringParameters: null,
+    queryStringParameters: {},
     isBase64Encoded: false,
     pathParameters: {
         "userId": USER_ID

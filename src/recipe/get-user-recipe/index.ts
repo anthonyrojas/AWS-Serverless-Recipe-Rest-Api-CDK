@@ -5,7 +5,8 @@ import {
 import {
     QueryCommand,
     QueryCommandInput,
-    QueryCommandOutput
+    QueryCommandOutput,
+    AttributeValue
 } from '@aws-sdk/client-dynamodb';
 import {
     unmarshall
@@ -24,9 +25,16 @@ export async function handler (event: APIGatewayEvent, context: Context) {
         const recipeTableName = process.env.RECIPES_TABLE_NAME!;
         const userId: string = event.pathParameters!["userId"]!;
         let limit = 100;
-        const queryParams = event.queryStringParameters;
+        const queryParams = event.queryStringParameters!;
         if(queryParams !== undefined && queryParams !== null && queryParams["limit"]) {
             limit = Number(queryParams["limit"]) || 20;
+        }
+        let paginationStart: Record<string, AttributeValue> | undefined = undefined;
+        if (queryParams["recipeId"] && queryParams["itemId"]) {
+            paginationStart = {};
+            paginationStart["recipeId"] = {S: queryParams!["recipeId"]};
+            paginationStart["itemId"] = {S: queryParams!["itemId"]};
+            paginationStart["userId"] = {S: userId};
         }
         const queryCmdInput: QueryCommandInput = {
             TableName: recipeTableName,
@@ -42,7 +50,8 @@ export async function handler (event: APIGatewayEvent, context: Context) {
             FilterExpression: "entityType=:entityType",
             IndexName: "UserItemIndex",
             ProjectionExpression: "recipeId,itemId,userId,entityType,imageUrls,searchName,title",
-            Limit: limit
+            Limit: limit,
+            ExclusiveStartKey: paginationStart
         };
         const queryCmd = new QueryCommand(queryCmdInput);
         const res = await ddbClient.send(queryCmd);

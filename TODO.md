@@ -12,7 +12,6 @@ The following is a list of improvements that are pending implementation.
 - [X] Add `cookTime` to recipes table model
 - [X] Implement single table design while separating by entity type
 - [X] Add Models for request body validations to API gateway
-- [ ] Add Ratings functionality to the API for users
 - [ ] Flesh out README
 - [X] Add images a recipe
 - [X] Add a pipeline for code changes
@@ -22,7 +21,6 @@ The following is a list of improvements that are pending implementation.
     - [X] Authentication Stack
     - [X] Database Stack
 - [X] Add unit tests
-- [ ] Add integ tests
 - [X] Add primitive search for recipe by name
 - [X] (Optional) Upgrade runtime to NodeJS 18
-- [ ] Add userId recipe query to get-recipe 
+- [X] Add userId recipe query to get-recipe 
